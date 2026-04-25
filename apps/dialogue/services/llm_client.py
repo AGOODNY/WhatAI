@@ -1,42 +1,42 @@
 import os
-from openai import OpenAI
+import dashscope
+from dashscope import Generation
+
+
 
 class LLMClient:
 
     def __init__(self):
-        api_key = os.getenv("OPENAI_API_KEY")
-        base_url = os.getenv("OPENAI_BASE_URL")
+        self.api_key = os.getenv("DASHSCOPE_API_KEY")
 
-        if not api_key:
-            print("[LLM] No API key found")
-            self.client = None
-            return
+        print("API KEY:", self.api_key)
 
-        self.client = OpenAI(
-            api_key=api_key,
-            base_url=base_url
-        )
+        if not self.api_key:
+            print("[LLM] 未配置通义千问API Key")
+        else:
+            dashscope.api_key = self.api_key
 
-        # 推荐模型（便宜/免费）
-        self.model = "meta-llama/llama-3-8b-instruct"
+        self.model = "qwen-turbo"  # 免费模型
 
     def generate(self, prompt: str) -> str:
 
-        if not self.client:
-            return "（未配置API Key）"
+        if not self.api_key:
+            return "（未配置千问API）"
 
         try:
-            response = self.client.chat.completions.create(
+            response = Generation.call(
                 model=self.model,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.7,
-                max_tokens=60
+                prompt=prompt,
+                max_tokens=50,
+                temperature=0.7
             )
 
-            return response.choices[0].message.content.strip()
+            if response.status_code == 200:
+                return response.output.text.strip()
+            else:
+                print("[LLM ERROR]", response)
+                return "（生成失败）"
 
         except Exception as e:
             print("[LLM ERROR]", e)
-            return "（生成失败）"
+            return "（调用异常）"

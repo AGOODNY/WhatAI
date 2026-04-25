@@ -1,7 +1,9 @@
 import sys
+from dotenv import load_dotenv
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 sys.path.insert(0, str(BASE_DIR / "apps"))
 
 SECRET_KEY = 'django-insecure-ws-nxo8c^9!ukwy0k)1*u)a&3=in2ke1@o09e345bv2#@c)u(j'
