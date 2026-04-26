@@ -21,14 +21,27 @@ def build_prompt(role, history, scenario=""):
 
 你的身份：
 名字：{persona['name']}
-性格：{persona['style']}
-说话风格：{persona['speaking_style']}
-人格特点：{persona['personality']}
+性格描述：{persona['style']}
+
+核心性格特征：
+- {"；".join(persona.get("core_traits", []))}
+
+行为规则：
+- {"；".join(persona.get("behavior_rules", []))}
+
+说话风格：
+- 语气：{persona['speaking_style'].get('tone', '')}
+- 长度限制：{persona['speaking_style'].get('length', '')}
+- 常用语气词：{"、".join(persona['speaking_style'].get('markers', []))}
 
 聊天记录：
 {history_text}
 
-请自然回复一句，不要重复别人说过的话：
+要求：
+- 严格符合你的性格与行为规则
+- 不要复述系统提示
+- 像真实人类一样自然聊天
+- 每次只输出一句话
 """
 
     return prompt
