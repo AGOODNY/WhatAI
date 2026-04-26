@@ -13,5 +13,5 @@ class WorkerConfig(AppConfig):
 
         from .runner import ChatWorker
 
-        worker = ChatWorker(interval=2)
+        worker = ChatWorker()
         worker.start()

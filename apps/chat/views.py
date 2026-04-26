@@ -1,29 +1,48 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
 
-from .serializers import MessageSerializer
+from .models import ChatRoom
+from .serializers import ChatRoomSerializer, MessageSerializer
 from .services.message_service import MessageService
 
 
-class MessageListView(APIView):
-    """
-    GET /api/chat/messages/
-    GET /api/chat/messages/?last_id=xxx
-    """
-
+# 获取所有聊天
+class ChatRoomListView(APIView):
     def get(self, request):
-        last_id = request.query_params.get("last_id")
+        rooms = ChatRoom.objects.all().order_by("-id")
+        serializer = ChatRoomSerializer(rooms, many=True)
+        return Response(serializer.data)
 
-        try:
-            last_id = int(last_id) if last_id else None
-        except ValueError:
-            return Response(
-                {"error": "Invalid last_id"},
-                status=status.HTTP_400_BAD_REQUEST
+
+# 创建新聊天
+class CreateChatRoomView(APIView):
+    def post(self, request):
+        name = request.data.get("name")
+        scenario = request.data.get("scenario")
+
+        room = ChatRoom.objects.create(
+            name=name,
+            scenario=scenario
+        )
+
+        return Response({
+            "id": room.id,
+            "name": room.name
+        })
+
+
+# 获取某个聊天的消息
+class MessageListView(APIView):
+    def get(self, request, room_id):
+        last_id = request.GET.get("last_id")
+
+        if last_id:
+            messages = MessageService.get_messages_after(
+                room_id, last_id
             )
+        else:
+            messages = MessageService.get_messages(room_id)
 
-        messages = MessageService.get_messages_after(last_id)
         serializer = MessageSerializer(messages, many=True)
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.data)
