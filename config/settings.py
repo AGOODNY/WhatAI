@@ -22,9 +22,11 @@ INSTALLED_APPS = [
     'apps.chat',
     'apps.worker',
     'rest_framework',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -87,3 +89,6 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# CORS 配置：允许所有跨域请求（仅用于开发环境）
+CORS_ALLOW_ALL_ORIGINS = True
