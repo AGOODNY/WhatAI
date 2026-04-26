@@ -3,14 +3,12 @@
     <div class="message-item">
 
         <!-- 头像 -->
-        <div class="avatar" :style="{ backgroundColor: avatarColor }">
-            {{ role }}
-        </div>
+        <img class="avatar" :src="avatarUrl" alt="avatar" />
 
         <!-- 内容区 -->
         <div class="content">
             <div class="username">
-                {{ role }}
+                {{ displayName }}
             </div>
 
             <div class="bubble">
@@ -23,6 +21,7 @@
 
 <script setup>
 import { computed } from "vue"
+import { PERSONA_MAP } from "../constants/personas"
 
 /**
  * 接收消息数据
@@ -32,17 +31,15 @@ const props = defineProps({
     content: String
 })
 
+const displayName = computed(() => {
+    return PERSONA_MAP[props.role]?.name || props.role
+})
+
 /**
- * 根据角色生成头像颜色
+ * 头像
  */
-const avatarColor = computed(() => {
-    const map = {
-        A: "#ff6b6b",
-        B: "#4dabf7",
-        C: "#51cf66",
-        D: "#868e96"
-    }
-    return map[props.role] || "#999"
+const avatarUrl = computed(() => {
+    return `/avatars/${props.role}.jpg`
 })
 </script>
 
@@ -58,12 +55,8 @@ const avatarColor = computed(() => {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     margin-right: 10px;
-    font-weight: bold;
+    object-fit: cover;
 }
 
 /* 内容 */
