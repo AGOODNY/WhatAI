@@ -62,8 +62,11 @@ function handleSelect(id) {
 /**
  * 点击新建聊天
  */
+import { useRouter } from "vue-router"
+const router = useRouter()
+
 function handleCreate() {
-    emit("createRoom")
+    router.push("/create")
 }
 
 /**

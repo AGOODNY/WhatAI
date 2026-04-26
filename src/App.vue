@@ -1,21 +1,6 @@
 <!-- 文件：src/App.vue -->
 <template>
-  <div class="app-container">
-
-    <!-- 左侧聊天列表 -->
-    <ChatSidebar
-      :currentRoomId="currentRoomId"
-      @selectRoom="selectRoom"
-      @createRoom="goToCreate"
-    />
-
-    <!-- 右侧聊天窗口（已替换） -->
-    <ChatWindow
-      :roomId="currentRoomId"
-      :roomName="currentRoomName"
-    />
-
-  </div>
+  <router-view />
 </template>
 
 <script setup>
