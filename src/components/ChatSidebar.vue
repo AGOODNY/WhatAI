@@ -5,8 +5,14 @@
         </div>
 
         <!-- 聊天列表 -->
-        <div v-for="room in rooms" :key="room.id" class="room-item" :class="{ active: room.id === currentRoomId }"
-            @click="handleSelect(room.id)">
+        <div
+            v-for="room in rooms"
+            :key="room.id"
+            class="room-item"
+            :class="{ active: room.id === currentRoomId }"
+            @click="handleSelect(room.id)"
+            @contextmenu.prevent="openMenu($event, room)"
+        >
             {{ room.name }}
         </div>
 
@@ -14,12 +20,25 @@
         <div class="create-btn" @click="handleCreate">
             + 新建聊天
         </div>
+
+        <!-- 右键菜单 -->
+        <div
+            v-if="menu.visible"
+            class="context-menu"
+            :style="{ top: menu.y + 'px', left: menu.x + 'px' }"
+        >
+            <div @click="deleteRoom(menu.room)">删除房间</div>
+            <div @click="toggleRoom(menu.room)">
+                {{ menu.room?.is_active ? "暂停生成" : "继续生成" }}
+            </div>
+        </div>
     </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from "vue"
 import axios from "axios"
+import { useRouter } from "vue-router"
 
 /**
  * 接收父组件传入的当前选中 room_id
@@ -33,10 +52,22 @@ const props = defineProps({
  */
 const emit = defineEmits(["selectRoom", "createRoom"])
 
+const router = useRouter()
+
 /**
  * 聊天列表
  */
 const rooms = ref([])
+
+/**
+ * 右键菜单状态
+ */
+const menu = ref({
+    visible: false,
+    x: 0,
+    y: 0,
+    room: null
+})
 
 /**
  * 获取聊天列表（调用后端 API）
@@ -60,11 +91,57 @@ function handleSelect(id) {
 }
 
 /**
+ * 右键打开菜单
+ */
+function openMenu(e, room) {
+    menu.value = {
+        visible: true,
+        x: e.clientX,
+        y: e.clientY,
+        room
+    }
+}
+
+/**
+ * 删除房间
+ */
+async function deleteRoom(room) {
+    try {
+        await axios.delete(
+            `http://127.0.0.1:8000/api/chat/rooms/${room.id}/delete/`
+        )
+
+        menu.value.visible = false
+
+        // 刷新列表
+        fetchRooms()
+
+    } catch (err) {
+        console.error("删除失败:", err)
+    }
+}
+
+/**
+ * 暂停 / 继续
+ */
+async function toggleRoom(room) {
+    try {
+        const res = await axios.post(
+            `http://127.0.0.1:8000/api/chat/rooms/${room.id}/toggle/`
+        )
+
+        room.is_active = res.data.is_active
+
+        menu.value.visible = false
+
+    } catch (err) {
+        console.error("切换失败:", err)
+    }
+}
+
+/**
  * 点击新建聊天
  */
-import { useRouter } from "vue-router"
-const router = useRouter()
-
 function handleCreate() {
     router.push("/create")
 }
@@ -74,6 +151,11 @@ function handleCreate() {
  */
 onMounted(() => {
     fetchRooms()
+
+    // 点击空白关闭菜单
+    window.addEventListener("click", () => {
+        menu.value.visible = false
+    })
 })
 </script>
 
@@ -115,5 +197,24 @@ onMounted(() => {
 
 .create-btn:hover {
     background: #2d7d46;
+}
+
+/* 右键菜单 */
+.context-menu {
+    position: fixed;
+    background: white;
+    color: black;
+    border: 1px solid #ddd;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+}
+
+.context-menu div {
+    padding: 10px 20px;
+    cursor: pointer;
+}
+
+.context-menu div:hover {
+    background: #f0f0f0;
 }
 </style>
