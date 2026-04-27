@@ -29,7 +29,7 @@ def start_worker():
     last_roles = {}
 
     while True:
-        rooms = ChatRoom.objects.all()
+        rooms = ChatRoom.objects.filter(is_active=True)
 
         for room in rooms:
             last_role = last_roles.get(room.id)

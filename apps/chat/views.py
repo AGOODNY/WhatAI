@@ -1,6 +1,6 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-
+from rest_framework import status
 from .models import ChatRoom
 from .serializers import ChatRoomSerializer, MessageSerializer
 from .services.message_service import MessageService
@@ -46,3 +46,27 @@ class MessageListView(APIView):
         serializer = MessageSerializer(messages, many=True)
 
         return Response(serializer.data)
+
+# 删除房间
+class DeleteRoomView(APIView):
+    def delete(self, request, room_id):
+        try:
+            room = ChatRoom.objects.get(id=room_id)
+            room.delete()
+            return Response({"msg": "deleted"})
+        except ChatRoom.DoesNotExist:
+            return Response({"error": "not found"}, status=404)
+
+# 暂停与继续
+class ToggleRoomActiveView(APIView):
+    def post(self, request, room_id):
+        try:
+            room = ChatRoom.objects.get(id=room_id)
+            room.is_active = not room.is_active
+            room.save()
+
+            return Response({
+                "is_active": room.is_active
+            })
+        except ChatRoom.DoesNotExist:
+            return Response({"error": "not found"}, status=404)
