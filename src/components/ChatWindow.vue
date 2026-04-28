@@ -5,7 +5,7 @@
             当前聊天：{{ roomName }}
         </div>
 
-        <div class="chat-content">
+        <div class="chat-content" ref="chatContentRef">
             <!-- 未选择房间 -->
             <div v-if="!roomId">
                 请选择一个聊天
@@ -23,7 +23,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onUnmounted } from "vue"
+import { ref, watch, onUnmounted, onMounted, nextTick } from "vue"
 import axios from "axios"
 import MessageItem from "./MessageItem.vue"
 
@@ -35,7 +35,7 @@ const props = defineProps({
 })
 
 /**
- * 房间名称（改为本地维护）
+ * 房间名称
  */
 const roomName = ref("未选择")
 
@@ -45,7 +45,17 @@ const roomName = ref("未选择")
 const messages = ref([])
 
 /**
- * 记录最新消息ID（用于增量更新）
+ * DOM 引用
+ */
+const chatContentRef = ref(null)
+
+/**
+ * 是否在底部（新增）
+ */
+const isAtBottom = ref(true)
+
+/**
+ * 记录最新消息ID
  */
 const lastId = ref(null)
 
@@ -55,7 +65,37 @@ const lastId = ref(null)
 let timer = null
 
 /**
- * 获取房间名称（新增）
+ * 判断是否在底部（新增）
+ */
+function checkIfAtBottom() {
+    const el = chatContentRef.value
+    if (!el) return
+
+    const threshold = 50 // 容忍误差（像微信一样）
+    isAtBottom.value =
+        el.scrollHeight - el.scrollTop - el.clientHeight < threshold
+}
+
+/**
+ * 平滑滚动到底部（修改）
+ */
+async function scrollToBottom(force = false) {
+    await nextTick()
+
+    const el = chatContentRef.value
+    if (!el) return
+
+    // 只有在底部 或 强制滚动 才滚
+    if (isAtBottom.value || force) {
+        el.scrollTo({
+            top: el.scrollHeight,
+            behavior: "smooth"
+        })
+    }
+}
+
+/**
+ * 获取房间名称
  */
 async function fetchRoomName() {
     if (!props.roomId) {
@@ -96,6 +136,9 @@ async function fetchMessages() {
 
         console.log("初始消息:", messages.value)
 
+        // 初始加载 → 强制滚到底
+        scrollToBottom(true)
+
     } catch (err) {
         console.error("获取消息失败:", err)
     }
@@ -117,6 +160,9 @@ async function fetchNewMessages() {
         if (newMsgs.length > 0) {
             messages.value.push(...newMsgs)
             lastId.value = newMsgs[newMsgs.length - 1].id
+
+            // 只有在底部才滚
+            scrollToBottom()
         }
 
     } catch (err) {
@@ -156,7 +202,7 @@ watch(
         messages.value = []
         lastId.value = null
 
-        await fetchRoomName()   // ⭐ 新增
+        await fetchRoomName()
 
         if (newVal) {
             await fetchMessages()
@@ -167,10 +213,25 @@ watch(
 )
 
 /**
- * 组件卸载时清理
+ * 监听滚动（新增）
+ */
+onMounted(() => {
+    const el = chatContentRef.value
+    if (el) {
+        el.addEventListener("scroll", checkIfAtBottom)
+    }
+})
+
+/**
+ * 组件卸载清理
  */
 onUnmounted(() => {
     stopPolling()
+
+    const el = chatContentRef.value
+    if (el) {
+        el.removeEventListener("scroll", checkIfAtBottom)
+    }
 })
 </script>
 
