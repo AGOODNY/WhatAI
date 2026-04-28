@@ -12,12 +12,7 @@
             </div>
 
             <!-- 消息列表 -->
-            <MessageItem
-                v-for="msg in messages"
-                :key="msg.id"
-                :role="msg.role"
-                :content="msg.content"
-            />
+            <MessageItem v-for="msg in messages" :key="msg.id" :role="msg.role" :content="msg.content" />
         </div>
     </div>
 </template>
@@ -105,8 +100,8 @@ async function fetchRoomName() {
 
     try {
         const res = await axios.get(
-    "/api/chat/rooms/"
-)
+            "/api/chat/rooms/"
+        )
 
         const room = res.data.find(r => r.id === props.roomId)
         roomName.value = room ? room.name : "未知房间"
@@ -125,8 +120,8 @@ async function fetchMessages() {
 
     try {
         const res = await axios.get(
-    `/api/chat/rooms/${props.roomId}/messages/`
-)
+            `/api/chat/rooms/${props.roomId}/messages/`
+        )
 
         messages.value = res.data
 
@@ -148,12 +143,20 @@ async function fetchMessages() {
  * 拉取新增消息
  */
 async function fetchNewMessages() {
-    if (!props.roomId || !lastId.value) return
+    if (!props.roomId || lastId.value === null) return
 
     try {
-        const res = axios.get(`/api/chat/rooms/${props.roomId}/messages/?last_id=${lastId.value}`)
+        const res = await axios.get(
+            `/api/chat/rooms/${props.roomId}/messages/?last_id=${lastId.value}`
+        )
 
-        const newMsgs = res.data
+        const newMsgs = res.data || []
+
+        // 数据保护：确保 newMsgs 是数组
+        if (!Array.isArray(newMsgs)) {
+            console.error("返回数据不是数组:", newMsgs)
+            return
+        }
 
         if (newMsgs.length > 0) {
             messages.value.push(...newMsgs)
