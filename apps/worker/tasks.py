@@ -20,7 +20,9 @@ def run_one_step_for_room(room_id, last_role=None):
 
     content = generate_message(role, history, room_id)
 
-    MessageService.create_message(room_id, role, content)
+    msg = MessageService.create_message(room_id, role, content)
+    if msg is None:
+        return last_role
 
     return role
 
@@ -32,10 +34,16 @@ def start_worker():
         rooms = ChatRoom.objects.filter(is_active=True)
 
         for room in rooms:
+            # 再次确认房间存在（防并发）
+            if not ChatRoom.objects.filter(id=room.id).exists():
+                continue
+
             last_role = last_roles.get(room.id)
 
-            new_role = run_one_step_for_room(room.id, last_role)
-
-            last_roles[room.id] = new_role
+            try:
+                new_role = run_one_step_for_room(room.id, last_role)
+                last_roles[room.id] = new_role
+            except Exception as e:
+                print(f"[Worker Error] room {room.id}:", e)
 
         time.sleep(3)

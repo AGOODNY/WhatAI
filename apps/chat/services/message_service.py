@@ -1,4 +1,5 @@
 from apps.chat.models import Message, ChatRoom
+from django.db import IntegrityError
 
 
 class MessageService:
@@ -18,8 +19,21 @@ class MessageService:
 
     @staticmethod
     def create_message(room_id, role, content):
-        return Message.objects.create(
-            room_id=room_id,
-            role=role,
-            content=content
-        )
+        """
+        安全创建消息（防止房间被删除）
+        """
+        try:
+            # 先检查房间是否存在
+            room = ChatRoom.objects.filter(id=room_id).first()
+            if not room:
+                return None
+
+            return Message.objects.create(
+                room=room,
+                role=role,
+                content=content
+            )
+
+        except IntegrityError:
+            # 防止并发删除导致崩溃
+            return None
