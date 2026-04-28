@@ -37,7 +37,7 @@ async function handleCreate() {
 
     try {
         const res = await axios.post(
-            "http://127.0.0.1:8000/api/chat/rooms/create/",
+            "http:///api/api/chat/rooms/create/",
             {
                 name: name.value,
                 scenario: scenario.value

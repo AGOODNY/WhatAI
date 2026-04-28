@@ -69,7 +69,7 @@ const menu = ref({
 
 async function fetchRooms() {
     try {
-        const res = await axios.get("http://127.0.0.1:8000/api/chat/rooms/")
+        const res = await axios.get("/api/chat/rooms/")
         rooms.value = res.data
 
         console.log("房间列表:", rooms.value)
@@ -94,7 +94,7 @@ function openMenu(e, room) {
 async function deleteRoom(room) {
     try {
         await axios.delete(
-            `http://127.0.0.1:8000/api/chat/rooms/${room.id}/delete/`
+            `http:///api/api/chat/rooms/${room.id}/delete/`
         )
 
         menu.value.visible = false
@@ -108,7 +108,7 @@ async function deleteRoom(room) {
 async function toggleRoom(room) {
     try {
         const res = await axios.post(
-            `http://127.0.0.1:8000/api/chat/rooms/${room.id}/toggle/`
+            `http:///api/api/chat/rooms/${room.id}/toggle/`
         )
 
         room.is_active = res.data.is_active

@@ -105,8 +105,8 @@ async function fetchRoomName() {
 
     try {
         const res = await axios.get(
-            "http://127.0.0.1:8000/api/chat/rooms/"
-        )
+    "/api/chat/rooms/"
+)
 
         const room = res.data.find(r => r.id === props.roomId)
         roomName.value = room ? room.name : "未知房间"
@@ -125,8 +125,8 @@ async function fetchMessages() {
 
     try {
         const res = await axios.get(
-            `http://127.0.0.1:8000/api/chat/rooms/${props.roomId}/messages/`
-        )
+    `/api/chat/rooms/${props.roomId}/messages/`
+)
 
         messages.value = res.data
 
@@ -152,7 +152,7 @@ async function fetchNewMessages() {
 
     try {
         const res = await axios.get(
-            `http://127.0.0.1:8000/api/chat/rooms/${props.roomId}/messages/?last_id=${lastId.value}`
+            `http:///api/api/chat/rooms/${props.roomId}/messages/?last_id=${lastId.value}`
         )
 
         const newMsgs = res.data
