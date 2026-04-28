@@ -151,9 +151,7 @@ async function fetchNewMessages() {
     if (!props.roomId || !lastId.value) return
 
     try {
-        const res = await axios.get(
-            `http:///api/api/chat/rooms/${props.roomId}/messages/?last_id=${lastId.value}`
-        )
+        const res = axios.get(`/api/chat/rooms/${props.roomId}/messages/?last_id=${lastId.value}`)
 
         const newMsgs = res.data
 

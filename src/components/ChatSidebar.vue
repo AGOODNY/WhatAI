@@ -93,9 +93,7 @@ function openMenu(e, room) {
 
 async function deleteRoom(room) {
     try {
-        await axios.delete(
-            `http:///api/api/chat/rooms/${room.id}/delete/`
-        )
+        await axios.delete(`/api/chat/rooms/${room.id}/delete/`)
 
         menu.value.visible = false
         fetchRooms()
@@ -107,9 +105,7 @@ async function deleteRoom(room) {
 
 async function toggleRoom(room) {
     try {
-        const res = await axios.post(
-            `http:///api/api/chat/rooms/${room.id}/toggle/`
-        )
+        const res = await axios.post(`/api/chat/rooms/${room.id}/toggle/`)
 
         room.is_active = res.data.is_active
 
