@@ -12,7 +12,12 @@
             </div>
 
             <!-- 消息列表 -->
-            <MessageItem v-for="msg in messages" :key="msg.id" :role="msg.role" :content="msg.content" />
+            <MessageItem
+                v-for="msg in messages"
+                :key="msg.id"
+                :role="msg.role"
+                :content="msg.content"
+            />
         </div>
     </div>
 </template>
@@ -23,12 +28,16 @@ import axios from "axios"
 import MessageItem from "./MessageItem.vue"
 
 /**
- * 接收当前房间ID + 名称
+ * 接收当前房间ID
  */
 const props = defineProps({
-    roomId: Number,
-    roomName: String
+    roomId: Number
 })
+
+/**
+ * 房间名称（改为本地维护）
+ */
+const roomName = ref("未选择")
 
 /**
  * 消息列表
@@ -44,6 +53,29 @@ const lastId = ref(null)
  * 轮询定时器
  */
 let timer = null
+
+/**
+ * 获取房间名称（新增）
+ */
+async function fetchRoomName() {
+    if (!props.roomId) {
+        roomName.value = "未选择"
+        return
+    }
+
+    try {
+        const res = await axios.get(
+            "http://127.0.0.1:8000/api/chat/rooms/"
+        )
+
+        const room = res.data.find(r => r.id === props.roomId)
+        roomName.value = room ? room.name : "未知房间"
+
+    } catch (err) {
+        console.error("获取房间名失败:", err)
+        roomName.value = "加载失败"
+    }
+}
 
 /**
  * 获取初始消息
@@ -123,6 +155,8 @@ watch(
 
         messages.value = []
         lastId.value = null
+
+        await fetchRoomName()   // ⭐ 新增
 
         if (newVal) {
             await fetchMessages()
