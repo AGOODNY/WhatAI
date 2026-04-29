@@ -10,7 +10,7 @@ SECRET_KEY = 'django-insecure-ws-nxo8c^9!ukwy0k)1*u)a&3=in2ke1@o09e345bv2#@c)u(j
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -89,7 +89,6 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
 # CORS 配置：允许所有跨域请求（仅用于开发环境）
 CORS_ALLOW_ALL_ORIGINS = True
 
