@@ -11,6 +11,7 @@ class ChatRoomSerializer(serializers.ModelSerializer):
             "scenario",
             "created_at",
             "is_active",
+            "started_at"
         ]
 
 

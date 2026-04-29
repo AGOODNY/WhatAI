@@ -1,5 +1,5 @@
 from django.db import models
-
+from django.utils import timezone
 
 class ChatRoom(models.Model):
     """
@@ -10,6 +10,8 @@ class ChatRoom(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     is_active = models.BooleanField(default=True)
+
+    started_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return self.name

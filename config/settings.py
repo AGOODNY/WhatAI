@@ -93,4 +93,4 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # CORS 配置：允许所有跨域请求（仅用于开发环境）
 CORS_ALLOW_ALL_ORIGINS = True
 
-LLM_MODEL = "deepseek-v3"
+LLM_MODEL = "deepseek-v3.2"

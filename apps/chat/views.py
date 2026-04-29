@@ -4,7 +4,7 @@ from rest_framework import status
 from .models import ChatRoom
 from .serializers import ChatRoomSerializer, MessageSerializer
 from .services.message_service import MessageService
-
+from django.utils import timezone
 
 # 获取所有聊天
 class ChatRoomListView(APIView):
@@ -22,7 +22,9 @@ class CreateChatRoomView(APIView):
 
         room = ChatRoom.objects.create(
             name=name,
-            scenario=scenario
+            scenario=scenario,
+            is_active=True,
+            started_at=timezone.now()
         )
 
         return Response({
@@ -63,6 +65,10 @@ class ToggleRoomActiveView(APIView):
         try:
             room = ChatRoom.objects.get(id=room_id)
             room.is_active = not room.is_active
+
+            if room.is_active:
+                room.started_at = timezone.now()
+
             room.save()
 
             return Response({

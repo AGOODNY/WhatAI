@@ -3,7 +3,8 @@ from apps.chat.models import ChatRoom, Message
 from apps.scheduler.services.scheduler import choose_next_speaker
 from apps.dialogue.services.dialogue_engine import generate_message
 from apps.chat.services.message_service import MessageService
-
+from django.utils import timezone
+from datetime import timedelta
 
 def get_history(room_id):
     messages = Message.objects.filter(
@@ -34,9 +35,17 @@ def start_worker():
         rooms = ChatRoom.objects.filter(is_active=True)
 
         for room in rooms:
-            # 再次确认房间存在（防并发）
+            # 再次确认房间存在
             if not ChatRoom.objects.filter(id=room.id).exists():
                 continue
+
+            #超时自动暂停（10分钟）
+            if room.started_at:
+                if timezone.now() - room.started_at > timedelta(minutes=10):
+                    room.is_active = False
+                    room.save()
+                    print(f"[AUTO STOP] room {room.id} 已自动暂停")
+                    continue
 
             last_role = last_roles.get(room.id)
 
