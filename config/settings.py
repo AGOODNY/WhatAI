@@ -1,6 +1,7 @@
 import sys
 from dotenv import load_dotenv
 from pathlib import Path
+from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
@@ -23,6 +24,7 @@ INSTALLED_APPS = [
     'apps.worker',
     'rest_framework',
     'corsheaders',
+    "apps.users",
 ]
 
 MIDDLEWARE = [
@@ -93,3 +95,19 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOW_ALL_ORIGINS = True
 
 LLM_MODEL = "deepseek-v3.2"
+
+# JWT 认证配置
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    )
+}
+
+# JWT 过期时间配置
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=7),
+}
+
+# 媒体文件配置（头像）
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
