@@ -19,7 +19,7 @@
 
 <script setup>
 import { ref, watch, onUnmounted, onMounted, nextTick } from "vue"
-import axios from "axios"
+import axios from "@/api/axios"
 import MessageItem from "./MessageItem.vue"
 
 /**

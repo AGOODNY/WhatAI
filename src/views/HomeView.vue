@@ -12,8 +12,8 @@
 import { ref, computed } from "vue"
 import { useRouter } from "vue-router"
 
-import ChatSidebar from "../components/ChatSidebar.vue"
-import ChatWindow from "../components/ChatWindow.vue"
+import ChatSidebar from "../components/chat/ChatSidebar.vue"
+import ChatWindow from "../components/chat/ChatWindow.vue"
 
 const router = useRouter()
 
@@ -37,8 +37,8 @@ const currentRoomName = computed(() => {
 
 <style>
 .app-container {
-    width: 100vw;
-    height: 100vh;
+    width:100%;
+    height:100%;
     display: flex;
 }
 </style>

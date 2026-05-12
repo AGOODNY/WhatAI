@@ -21,7 +21,7 @@
 
 <script setup>
 import { computed } from "vue"
-import { PERSONA_MAP } from "../constants/personas"
+import { PERSONA_MAP } from "../../constants/personas"
 
 /**
  * 接收消息数据
