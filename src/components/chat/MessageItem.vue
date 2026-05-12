@@ -59,16 +59,27 @@ const avatarUrl = computed(() => {
     object-fit: cover;
 }
 
+
 /* 内容 */
 .content {
     max-width: 70%;
+
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
 }
 
 /* 用户名 */
 .username {
     font-size: 12px;
     color: #888;
-    margin-bottom: 5px;
+
+    margin-bottom: 4px;
+
+    line-height: 1;
+    text-align: left;
+
+    padding-left: 2px;
 }
 
 /* 气泡 */
