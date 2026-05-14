@@ -104,15 +104,21 @@ class SendPrivateMessageView(APIView):
             )
         )
 
-        ai_msg = (
+        user_msg, ai_msg = (
             PrivateChatService.send_message(
                 room,
                 content
             )
         )
 
-        serializer = (
-            PrivateMessageSerializer(ai_msg)
-        )
+        return Response({
+            "user_message":
+                PrivateMessageSerializer(
+                    user_msg
+                ).data,
 
-        return Response(serializer.data)
+            "ai_message":
+                PrivateMessageSerializer(
+                    ai_msg
+                ).data
+        })

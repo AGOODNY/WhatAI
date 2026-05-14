@@ -8,7 +8,7 @@ def build_prompt(role, history, scenario=""):
     # ======================
     # 1. 构建简化历史（只保留最近）
     # ======================
-    recent_history = history[-12:]  # 控制长度，避免AI发疯
+    recent_history = history[-12:]  # 控制长度
 
     history_text = ""
     last_speaker = None
@@ -62,7 +62,7 @@ def build_prompt(role, history, scenario=""):
     persona_block = f"""
 【你的身份】
 
-名字：{persona['name']}
+名字：{persona['display_name']}
 
 性格要点：
 - {"；".join(persona.get("core_traits", [])[:3])}
