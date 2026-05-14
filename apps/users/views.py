@@ -57,7 +57,8 @@ class MeView(APIView):
 
     def get(self, request):
         serializer = UserProfileSerializer(
-            request.user.profile
+            request.user.profile,
+            context={"request": request}
         )
 
         return Response(serializer.data)
@@ -80,6 +81,9 @@ class UpdateProfileView(APIView):
 
         profile.save()
 
-        serializer = UserProfileSerializer(profile)
+        serializer = UserProfileSerializer(
+            profile,
+            context={"request": request}
+        )
 
         return Response(serializer.data)

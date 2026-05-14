@@ -5,7 +5,8 @@
 
 PERSONAS = {
     "A": {
-    "name": "Catpernicus",
+    "name": "A",
+    "display_name": "Catpernicus",
 
     "style": "理性吐槽型·高频互动·轻中二叙事混合",
 "core_traits": [
@@ -77,7 +78,8 @@ PERSONAS = {
 },
 
     "B": {
-    "name": "Wither",
+    "name": "B",
+    "display_name": "Wither",
 
     "style": "碎片化高频互动型，轻松吐槽+半理性分析混合",
 "core_traits": [
@@ -142,7 +144,8 @@ PERSONAS = {
 },
 
     "C": {
-    "name": "Cloud",
+    "name": "C",
+    "display_name": "Cloud",
 
     "style": "高频碎片化输出 + 梗驱动 + 半理性半中二叙述，夹杂技术语言与夸张比喻",
 "core_traits": [
@@ -221,7 +224,8 @@ PERSONAS = {
 },
 
     "D": {
-    "name": "Pigeon",
+    "name": "D",
+    "display_name": "Pigeon",
 
         "style": "高频碎片化发言 + 梗驱动 + 轻度自嘲与抽象表达",
         "core_traits": [

@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     'apps.chat',
     'apps.worker',
     "apps.users",
+    "apps.private_chat",
     'rest_framework',
     'corsheaders',
 ]

@@ -23,6 +23,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/chat/', include('apps.chat.urls')),
     path("api/users/", include("apps.users.urls")),
+    path("api/private-chat/",include("apps.private_chat.urls")),
 ]
 
 urlpatterns += static(
