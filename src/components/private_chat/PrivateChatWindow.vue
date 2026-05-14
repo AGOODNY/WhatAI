@@ -40,6 +40,7 @@
 <script setup>
 import {
     ref,
+    computed,
     onMounted,
     watch,
     nextTick
@@ -47,8 +48,9 @@ import {
 
 import axios from "../../api/axios"
 
-import { PERSONA_MAP }
-from "../../constants/personas"
+import {
+    PERSONA_MAP
+} from "../../constants/personas"
 
 import PrivateMessageItem
 from "./PrivateMessageItem.vue"
@@ -66,8 +68,12 @@ const me = ref(null)
 
 const messageContainer = ref(null)
 
-const persona =
-    PERSONA_MAP[props.room.ai_role]
+const persona = computed(() => {
+
+    return PERSONA_MAP[
+        props.room.ai_role
+    ]
+})
 
 async function fetchMe() {
 
@@ -158,7 +164,7 @@ function getAvatar(msg) {
         )
     }
 
-    return persona.avatar
+    return persona.value.avatar
 }
 
 function getNickname(msg) {
@@ -171,7 +177,7 @@ function getNickname(msg) {
         )
     }
 
-    return persona.name
+    return persona.value.name
 }
 
 watch(
