@@ -1,14 +1,11 @@
 <template>
     <div class="profile-page">
-
         <div class="profile-card">
 
-            <!-- 标题 -->
             <h1 class="title">
                 个人中心
             </h1>
 
-            <!-- 头像 -->
             <div class="avatar-section">
 
                 <img
@@ -33,7 +30,6 @@
 
             </div>
 
-            <!-- 用户名 -->
             <div class="info-item">
                 <div class="label">
                     用户名
@@ -44,7 +40,6 @@
                 </div>
             </div>
 
-            <!-- 昵称 -->
             <div class="info-item">
 
                 <div class="label">
@@ -58,7 +53,6 @@
 
             </div>
 
-            <!-- 保存按钮 -->
             <button
                 class="save-btn"
                 @click="save"
@@ -67,7 +61,6 @@
             </button>
 
         </div>
-
     </div>
 </template>
 
@@ -81,46 +74,36 @@ const nickname = ref("nickname")
 const avatar = ref(null)
 
 const avatarPreview = ref(
-    "/avatars/1.jpg"
+    "/avatars/default.jpg"
 )
 
 const fileInput = ref(null)
 
-/**
- * 获取用户信息
- */
-async function fetchProfile(){
-    try{
+async function fetchProfile() {
+
+    try {
 
         const res = await axios.get(
             "/api/users/me/"
         )
-
-        console.log("用户信息:", res.data)
 
         username.value = res.data.username
 
         nickname.value =
             res.data.nickname || "nickname"
 
-        /**
-         * 用户头像
-         */
-        if(res.data.avatar_url){
+        if (res.data.avatar_url) {
 
             avatarPreview.value =
                 res.data.avatar_url
 
-        }else{
+        } else {
 
-            /**
-             * 默认头像
-             */
             avatarPreview.value =
-                "/avatars/1.jpg"
+                "/avatars/default.jpg"
         }
 
-    }catch(err){
+    } catch (err) {
 
         console.error(
             "获取用户信息失败",
@@ -129,34 +112,23 @@ async function fetchProfile(){
     }
 }
 
-/**
- * 选择头像
- */
-function chooseAvatar(){
-
+function chooseAvatar() {
     fileInput.value.click()
 }
 
-/**
- * 处理头像上传
- */
-function handleFile(e){
+function handleFile(e) {
 
     const file = e.target.files[0]
 
-    if(!file) return
+    if (!file) return
 
     avatar.value = file
 
-    // 本地预览
     avatarPreview.value =
         URL.createObjectURL(file)
 }
 
-/**
- * 保存资料
- */
-async function save(){
+async function save() {
 
     const formData = new FormData()
 
@@ -165,7 +137,7 @@ async function save(){
         nickname.value
     )
 
-    if(avatar.value){
+    if (avatar.value) {
 
         formData.append(
             "avatar",
@@ -173,7 +145,7 @@ async function save(){
         )
     }
 
-    try{
+    try {
 
         const res = await axios.post(
             "/api/users/profile/update/",
@@ -186,10 +158,7 @@ async function save(){
             }
         )
 
-        /**
-         * 更新头像
-         */
-        if(res.data.avatar_url){
+        if (res.data.avatar_url) {
 
             avatarPreview.value =
                 res.data.avatar_url
@@ -197,7 +166,7 @@ async function save(){
 
         alert("保存成功")
 
-    }catch(err){
+    } catch (err) {
 
         console.error(err)
 
@@ -206,18 +175,15 @@ async function save(){
 }
 
 onMounted(() => {
-
     fetchProfile()
 })
 </script>
 
 <style scoped>
-
 .profile-page{
     width:100%;
     height:100%;
     background:#f5f6fa;
-
     display:flex;
     justify-content:center;
     align-items:center;
@@ -225,18 +191,12 @@ onMounted(() => {
 
 .profile-card{
     width:420px;
-
     background:white;
-
     border-radius:20px;
-
     padding:40px;
-
     box-shadow:0 4px 20px rgba(0,0,0,0.08);
-
     display:flex;
     flex-direction:column;
-
     gap:25px;
 }
 
@@ -255,25 +215,17 @@ onMounted(() => {
 .avatar{
     width:120px;
     height:120px;
-
     border-radius:50%;
-
     object-fit:cover;
-
     border:4px solid #eee;
 }
 
 .change-btn{
     padding:10px 20px;
-
     border:none;
-
     border-radius:10px;
-
     background:#5865f2;
-
     color:white;
-
     cursor:pointer;
 }
 
@@ -294,19 +246,14 @@ onMounted(() => {
 
 .value{
     padding:12px;
-
     background:#f0f2f5;
-
     border-radius:10px;
 }
 
 .nickname-input{
     padding:12px;
-
     border:1px solid #ddd;
-
     border-radius:10px;
-
     outline:none;
 }
 
@@ -316,19 +263,12 @@ onMounted(() => {
 
 .save-btn{
     margin-top:10px;
-
     padding:14px;
-
     border:none;
-
     border-radius:12px;
-
     background:#3ba55d;
-
     color:white;
-
     font-size:16px;
-
     cursor:pointer;
 }
 

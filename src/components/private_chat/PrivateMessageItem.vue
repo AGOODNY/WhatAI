@@ -70,6 +70,9 @@ const props = defineProps({
     text-align:left;
 }
 
+.message-wrapper.mine .nickname{
+    text-align:right;
+}
 
 .bubble{
     background:white;

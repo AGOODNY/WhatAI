@@ -2,19 +2,37 @@
     <div class="chat-window">
 
         <div class="header">
-            <img :src="persona.avatar" class="header-avatar" />
+
+            <img
+                :src="persona.avatar"
+                class="header-avatar"
+            />
 
             <div class="header-name">
                 {{ persona.name }}
             </div>
+
         </div>
 
-        <div class="messages" ref="messageContainer">
-            <PrivateMessageItem v-for="msg in messages" :key="msg.id" :message="msg" :isMine="msg.sender_type === 'user'
-                " :avatar="getAvatar(msg)" :nickname="getNickname(msg)" />
+        <div
+            class="messages"
+            ref="messageContainer"
+        >
+
+            <PrivateMessageItem
+                v-for="msg in messages"
+                :key="msg.id"
+                :message="msg"
+                :isMine="msg.sender_type === 'user'"
+                :avatar="getAvatar(msg)"
+                :nickname="getNickname(msg)"
+            />
+
         </div>
 
-        <MessageInput @send="sendMessage" />
+        <MessageInput
+            @send="sendMessage"
+        />
 
     </div>
 </template>
@@ -23,19 +41,20 @@
 import {
     ref,
     onMounted,
+    watch,
     nextTick
 } from "vue"
 
 import axios from "../../api/axios"
 
 import { PERSONA_MAP }
-    from "../../constants/personas"
+from "../../constants/personas"
 
 import PrivateMessageItem
-    from "./PrivateMessageItem.vue"
+from "./PrivateMessageItem.vue"
 
 import MessageInput
-    from "./MessageInput.vue"
+from "./MessageInput.vue"
 
 const props = defineProps({
     room: Object,
@@ -67,6 +86,8 @@ async function fetchMessages() {
 
     messages.value = res.data
 
+    await nextTick()
+
     scrollToBottom()
 }
 
@@ -74,14 +95,15 @@ async function sendMessage(content) {
 
     try {
 
-        // 本地立即显示
         const localUserMsg = {
             id: Date.now(),
             sender_type: "user",
             content,
         }
 
-        messages.value.push(localUserMsg)
+        messages.value.push(
+            localUserMsg
+        )
 
         await nextTick()
 
@@ -94,10 +116,8 @@ async function sendMessage(content) {
             }
         )
 
-        // 删除临时消息
         messages.value.pop()
 
-        // 加入真实消息
         messages.value.push(
             res.data.user_message
         )
@@ -113,7 +133,6 @@ async function sendMessage(content) {
     } catch (err) {
 
         console.error(err)
-
     }
 }
 
@@ -123,19 +142,10 @@ function scrollToBottom() {
 
     if (!el) return
 
-    const isNearBottom =
-        el.scrollHeight -
-        el.scrollTop -
-        el.clientHeight < 120
-
-    if (isNearBottom) {
-
-        el.scrollTo({
-            top: el.scrollHeight,
-            behavior: "smooth",
-        })
-
-    }
+    el.scrollTo({
+        top: el.scrollHeight,
+        behavior: "smooth",
+    })
 }
 
 function getAvatar(msg) {
@@ -143,7 +153,7 @@ function getAvatar(msg) {
     if (msg.sender_type === "user") {
 
         return (
-            me.value?.avatar
+            me.value?.avatar_url
             || "/avatars/default.jpg"
         )
     }
@@ -164,48 +174,55 @@ function getNickname(msg) {
     return persona.name
 }
 
+watch(
+    () => props.room.id,
+    async () => {
+
+        await fetchMessages()
+    }
+)
+
 onMounted(async () => {
 
     await fetchMe()
 
     await fetchMessages()
-
 })
 </script>
 
 <style scoped>
-.chat-window {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
+.chat-window{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    height:100%;
 }
 
-.header {
-    height: 70px;
-    background: white;
-    border-bottom: 1px solid #ddd;
-    display: flex;
-    align-items: center;
-    padding: 0 20px;
+.header{
+    height:70px;
+    background:white;
+    border-bottom:1px solid #ddd;
+    display:flex;
+    align-items:center;
+    padding:0 20px;
 }
 
-.header-avatar {
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
+.header-avatar{
+    width:42px;
+    height:42px;
+    border-radius:50%;
 }
 
-.header-name {
-    margin-left: 12px;
-    font-size: 18px;
-    font-weight: bold;
+.header-name{
+    margin-left:12px;
+    font-size:18px;
+    font-weight:bold;
 }
 
-.messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px;
-    background: #f5f5f5;
+.messages{
+    flex:1;
+    overflow-y:auto;
+    padding:20px;
+    background:#f5f5f5;
 }
 </style>
