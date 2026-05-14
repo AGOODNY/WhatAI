@@ -90,27 +90,42 @@ const fileInput = ref(null)
  * 获取用户信息
  */
 async function fetchProfile(){
-
     try{
 
         const res = await axios.get(
             "/api/users/me/"
         )
 
+        console.log("用户信息:", res.data)
+
         username.value = res.data.username
 
-        nickname.value = res.data.nickname || "nickname"
+        nickname.value =
+            res.data.nickname || "nickname"
 
-        // 如果用户有头像
-        if(res.data.avatar){
+        /**
+         * 用户头像
+         */
+        if(res.data.avatar_url){
 
             avatarPreview.value =
-                "http://127.0.0.1:8000" + res.data.avatar
+                res.data.avatar_url
+
+        }else{
+
+            /**
+             * 默认头像
+             */
+            avatarPreview.value =
+                "/avatars/1.jpg"
         }
 
     }catch(err){
 
-        console.error("获取用户信息失败", err)
+        console.error(
+            "获取用户信息失败",
+            err
+        )
     }
 }
 
@@ -160,10 +175,25 @@ async function save(){
 
     try{
 
-        await axios.post(
+        const res = await axios.post(
             "/api/users/profile/update/",
-            formData
+            formData,
+            {
+                headers: {
+                    "Content-Type":
+                        "multipart/form-data"
+                }
+            }
         )
+
+        /**
+         * 更新头像
+         */
+        if(res.data.avatar_url){
+
+            avatarPreview.value =
+                res.data.avatar_url
+        }
 
         alert("保存成功")
 
