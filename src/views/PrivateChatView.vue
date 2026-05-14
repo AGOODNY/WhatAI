@@ -1,39 +1,66 @@
 <template>
-
     <div class="private-chat-page">
 
-        <CharacterSelect
-            v-if="!currentRoom"
-            @room-created="enterRoom"
-        />
+        <PrivateRoomSidebar :rooms="rooms" :currentRoomId="currentRoom?.id" @select="enterRoom" />
 
-        <PrivateChatWindow
-            v-else
-            :room="currentRoom"
-        />
+        <div class="content">
+
+            <CharacterSelect v-if="!currentRoom" @room-created="handleCreated" />
+
+            <PrivateChatWindow v-else :room="currentRoom" />
+
+        </div>
 
     </div>
-
 </template>
 
 <script setup>
-import { ref } from "vue"
+import { ref, onMounted } from "vue"
+
+import axios from "../api/axios"
 
 import CharacterSelect from "../components/private_chat/CharacterSelect.vue"
 
 import PrivateChatWindow from "../components/private_chat/PrivateChatWindow.vue"
 
+import PrivateRoomSidebar from "../components/private_chat/PrivateRoomSidebar.vue"
+
 const currentRoom = ref(null)
 
-function enterRoom(room){
+const rooms = ref([])
+
+async function fetchRooms() {
+
+    const res = await axios.get(
+        "/api/private-chat/rooms/"
+    )
+
+    rooms.value = res.data
+}
+
+function enterRoom(room) {
+    currentRoom.value = room
+}
+
+async function handleCreated(room) {
+
+    await fetchRooms()
 
     currentRoom.value = room
 }
+
+onMounted(fetchRooms)
 </script>
 
 <style scoped>
-.private-chat-page{
-    width:100%;
-    height:100%;
+.private-chat-page {
+    width: 100%;
+    height: 100%;
+    display: flex;
+}
+
+.content {
+    flex: 1;
+    height: 100%;
 }
 </style>

@@ -67,11 +67,9 @@ const props = defineProps({
     font-size:13px;
     color:#666;
     margin-bottom:4px;
+    text-align:left;
 }
 
-.message-wrapper.mine .nickname{
-    text-align:right;
-}
 
 .bubble{
     background:white;
