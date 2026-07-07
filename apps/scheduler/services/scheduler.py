@@ -31,7 +31,7 @@ def _boost_if_mentioned(weights: dict, history: List[Dict]):
 
     last_msg = history[-1]["content"]
 
-    for role in ROLES:
+    for role in weights.keys():
         if role in last_msg:
             weights[role] *= 1.8
 
@@ -48,7 +48,8 @@ def _random_by_weight(weights: dict) -> str:
 
 def choose_next_speaker(
     history: List[Dict],
-    last_role: Optional[str] = None
+    last_role: Optional[str] = None,
+    roles: Optional[List[str]] = None,
 ) -> str:
     """
     输入：
@@ -60,7 +61,11 @@ def choose_next_speaker(
     """
 
     # 1）基础权重
-    weights = BASE_WEIGHTS.copy()
+    active_roles = roles or ROLES
+    weights = {
+        role: BASE_WEIGHTS.get(role, 1.0)
+        for role in active_roles
+    }
 
     # 2）避免连续说话
     _penalize_last_speaker(weights, last_role)

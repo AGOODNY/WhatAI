@@ -18,7 +18,7 @@ class MessageService:
         ).order_by("id")
 
     @staticmethod
-    def create_message(room_id, role, content):
+    def create_message(room_id, role, content, persona=None):
         """
         安全创建消息（防止房间被删除）
         """
@@ -31,6 +31,7 @@ class MessageService:
             return Message.objects.create(
                 room=room,
                 role=role,
+                persona=persona,
                 content=content
             )
 

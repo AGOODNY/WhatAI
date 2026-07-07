@@ -6,6 +6,8 @@ from .models import ChatRoom
 from .serializers import ChatRoomSerializer, MessageSerializer
 from .services.message_service import MessageService
 from django.utils import timezone
+from django.db.models import Q
+from apps.personas.models import Persona
 
 
 # 获取所有聊天
@@ -25,6 +27,38 @@ class CreateChatRoomView(APIView):
     def post(self, request):
         name = request.data.get("name")
         scenario = request.data.get("scenario")
+        persona_ids = request.data.get("persona_ids") or []
+
+        if not isinstance(persona_ids, list):
+            return Response(
+                {"error": "persona_ids must be a list"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if len(persona_ids) < 2 or len(persona_ids) > 4:
+            return Response(
+                {"error": "Please choose 2-4 personas"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if len(persona_ids) != len(set(persona_ids)):
+            return Response(
+                {"error": "Please choose different personas"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        personas = list(
+            Persona.objects.filter(
+                Q(is_builtin=True) | Q(owner=request.user),
+                id__in=persona_ids
+            )
+        )
+
+        if len(personas) != len(persona_ids):
+            return Response(
+                {"error": "Invalid persona selection"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         room = ChatRoom.objects.create(
             name=name,
@@ -32,6 +66,7 @@ class CreateChatRoomView(APIView):
             is_active=True,
             started_at=timezone.now()
         )
+        room.personas.set(personas)
 
         return Response({
             "id": room.id,

@@ -10,7 +10,15 @@ class PrivateChatRoom(models.Model):
         related_name="private_rooms"
     )
 
-    ai_role = models.CharField(max_length=1)
+    ai_role = models.CharField(max_length=64)
+
+    persona = models.ForeignKey(
+        "personas.Persona",
+        on_delete=models.SET_NULL,
+        related_name="private_rooms",
+        blank=True,
+        null=True
+    )
 
     title = models.CharField(
         max_length=100,

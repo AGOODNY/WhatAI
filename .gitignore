@@ -15,7 +15,6 @@ db.sqlite3
 
 # Environment variables
 .env
-git init
 # Static files (如果你以后collectstatic)
 staticfiles/
 

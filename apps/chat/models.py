@@ -13,6 +13,12 @@ class ChatRoom(models.Model):
 
     started_at = models.DateTimeField(null=True, blank=True)
 
+    personas = models.ManyToManyField(
+        "personas.Persona",
+        related_name="chat_rooms",
+        blank=True
+    )
+
     def __str__(self):
         return self.name
 
@@ -27,7 +33,14 @@ class Message(models.Model):
         related_name="messages"
     )
 
-    role = models.CharField(max_length=1)  # A/B/C/D
+    role = models.CharField(max_length=64)  # legacy role or persona id
+    persona = models.ForeignKey(
+        "personas.Persona",
+        on_delete=models.SET_NULL,
+        related_name="messages",
+        blank=True,
+        null=True
+    )
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
 

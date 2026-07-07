@@ -1,11 +1,11 @@
-from apps.personas.personas import get_persona
+from apps.personas.services import get_persona_by_token
 
 
 def build_private_prompt(
     role,
     history,
 ):
-    persona = get_persona(role)
+    persona = get_persona_by_token(role)
 
     recent_history = history[-20:]
 
@@ -31,6 +31,9 @@ def build_private_prompt(
 
 说话风格：
 {persona['speaking_style'].get('tone', '')}
+
+补充设定：
+{persona.get('personality_prompt', '')}
 
 【重要规则】
 

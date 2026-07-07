@@ -4,11 +4,13 @@ from .models import (
     PrivateChatRoom,
     PrivateMessage
 )
+from apps.personas.serializers import PersonaSerializer
 
 
 class PrivateChatRoomSerializer(
     serializers.ModelSerializer
 ):
+    persona = PersonaSerializer(read_only=True)
 
     class Meta:
         model = PrivateChatRoom

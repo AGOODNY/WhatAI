@@ -9,10 +9,8 @@ class LLMClient:
     def __init__(self):
         self.api_key = os.getenv("DASHSCOPE_API_KEY")
 
-        print("API KEY:", self.api_key)
-
         if not self.api_key:
-            print("[LLM] 未配置通义千问API Key")
+            print("[LLM] API key is not configured")
         else:
             dashscope.api_key = self.api_key
 
@@ -22,7 +20,7 @@ class LLMClient:
         # fallback 模型
         self.fallback_model = "qwen-turbo"
 
-        print(f"[LLM] 当前模型: {self.model}")
+        print(f"[LLM] Current model: {self.model}")
 
     def generate(self, prompt: str) -> str:
 

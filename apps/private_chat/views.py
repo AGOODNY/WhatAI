@@ -26,14 +26,19 @@ class CreatePrivateRoomView(APIView):
 
     def post(self, request):
 
+        persona_id = request.data.get("persona_id")
         ai_role = request.data.get("ai_role")
 
-        room = (
-            PrivateChatService.create_room(
-                request.user,
-                ai_role
+        try:
+            room = (
+                PrivateChatService.create_room(
+                    request.user,
+                    persona_id=persona_id,
+                    ai_role=ai_role
+                )
             )
-        )
+        except ValueError:
+            return Response({"error": "Invalid persona"}, status=400)
 
         serializer = (
             PrivateChatRoomSerializer(room)

@@ -1,61 +1,61 @@
+from django.db.models import Q
+
+from apps.personas.models import Persona
 from apps.private_chat.models import (
     PrivateChatRoom,
-    PrivateMessage
+    PrivateMessage,
 )
-
-from apps.private_chat.services.ai_reply_service import (
-    generate_ai_reply
-)
-
-from apps.personas.personas import PERSONAS
+from apps.private_chat.services.ai_reply_service import generate_ai_reply
 
 
 class PrivateChatService:
 
     @staticmethod
-    def create_room(user, ai_role):
+    def create_room(user, persona_id=None, ai_role=None):
+        persona = None
 
-        count = (
-            PrivateChatRoom.objects.filter(
-                user=user,
-                ai_role=ai_role
-            ).count()
-        )
+        if persona_id:
+            persona = Persona.objects.filter(
+                Q(is_builtin=True) | Q(owner=user),
+                id=persona_id,
+            ).first()
+        elif ai_role:
+            persona = Persona.objects.filter(
+                is_builtin=True,
+                legacy_role=ai_role,
+            ).first()
 
-        persona = PERSONAS[ai_role]
+        if not persona:
+            raise ValueError("Invalid persona")
 
-        title = (
-            f"和{persona['display_name']}的聊天"
-            f"{count + 1}"
-        )
+        count = PrivateChatRoom.objects.filter(
+            user=user,
+            persona=persona,
+        ).count()
 
         room = PrivateChatRoom.objects.create(
             user=user,
-            ai_role=ai_role,
-            title=title
+            ai_role=persona.legacy_role or str(persona.id),
+            persona=persona,
+            title=f"和 {persona.name} 的聊天 {count + 1}",
         )
 
         return room
 
     @staticmethod
     def send_message(room, content):
-
-        user_msg = (
-            PrivateMessage.objects.create(
-                room=room,
-                sender_type="user",
-                content=content
-            )
+        user_msg = PrivateMessage.objects.create(
+            room=room,
+            sender_type="user",
+            content=content,
         )
 
         ai_reply = generate_ai_reply(room)
 
-        ai_msg = (
-            PrivateMessage.objects.create(
-                room=room,
-                sender_type="ai",
-                content=ai_reply
-            )
+        ai_msg = PrivateMessage.objects.create(
+            room=room,
+            sender_type="ai",
+            content=ai_reply,
         )
 
         return user_msg, ai_msg

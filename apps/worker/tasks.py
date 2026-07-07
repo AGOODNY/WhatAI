@@ -11,17 +11,36 @@ def get_history(room_id):
         room_id=room_id
     ).order_by("-id")[:50][::-1]
 
-    return [{"role": m.role, "content": m.content} for m in messages]
+    return [
+        {
+            "role": str(m.persona_id or m.role),
+            "content": m.content
+        }
+        for m in messages
+    ]
 
 
 def run_one_step_for_room(room_id, last_role=None):
     history = get_history(room_id)
+    room = ChatRoom.objects.filter(id=room_id).first()
+    if not room:
+        return last_role
 
-    role = choose_next_speaker(history, last_role)
+    personas = list(room.personas.all())
+    if not personas:
+        return last_role
+
+    role_ids = [str(persona.id) for persona in personas]
+
+    role = choose_next_speaker(history, last_role, role_ids)
+    persona = next(
+        (item for item in personas if str(item.id) == role),
+        None
+    )
 
     content = generate_message(role, history, room_id)
 
-    msg = MessageService.create_message(room_id, role, content)
+    msg = MessageService.create_message(room_id, role, content, persona)
     if msg is None:
         return last_role
 

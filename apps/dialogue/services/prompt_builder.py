@@ -1,9 +1,9 @@
-from apps.personas.personas import get_persona
+from apps.personas.services import get_persona_by_token
 
 
 def build_prompt(role, history, scenario=""):
 
-    persona = get_persona(role)
+    persona = get_persona_by_token(role)
 
     # ======================
     # 1. 构建简化历史（只保留最近）
@@ -69,6 +69,9 @@ def build_prompt(role, history, scenario=""):
 
 说话倾向：
 - {persona['speaking_style'].get('tone', '')}
+
+补充设定：
+{persona.get('personality_prompt', '')}
 """
 
     # ======================
