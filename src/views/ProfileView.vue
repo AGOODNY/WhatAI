@@ -1,66 +1,47 @@
 <template>
     <div class="profile-page">
-        <div class="profile-card">
-
-            <h1 class="title">
-                个人中心
-            </h1>
+        <section class="profile-card">
+            <div class="heading">
+                <p>Profile</p>
+                <h1>个人中心</h1>
+            </div>
 
             <div class="avatar-section">
-
-                <img
-                    :src="avatarPreview"
-                    class="avatar"
-                />
+                <img :src="avatarPreview" class="avatar" />
 
                 <input
                     ref="fileInput"
                     type="file"
                     accept="image/*"
-                    style="display:none"
+                    class="file-input"
                     @change="handleFile"
                 />
 
-                <button
-                    class="change-btn"
-                    @click="chooseAvatar"
-                >
+                <button class="change-btn" @click="chooseAvatar">
                     修改头像
                 </button>
-
             </div>
 
-            <div class="info-item">
-                <div class="label">
-                    用户名
-                </div>
+            <div class="info-grid">
+                <label class="info-item">
+                    <span>用户名</span>
+                    <div class="value">{{ username }}</div>
+                </label>
 
-                <div class="value">
-                    {{ username }}
-                </div>
+                <label class="info-item">
+                    <span>昵称</span>
+                    <input
+                        v-model="nickname"
+                        class="nickname-input"
+                        placeholder="给自己起个昵称"
+                    />
+                </label>
             </div>
 
-            <div class="info-item">
-
-                <div class="label">
-                    昵称
-                </div>
-
-                <input
-                    v-model="nickname"
-                    class="nickname-input"
-                />
-
-            </div>
-
-            <button
-                class="save-btn"
-                @click="save"
-            >
+            <button class="save-btn" @click="save">
                 保存修改
             </button>
-
-        </div>
+        </section>
     </div>
 </template>
 
@@ -70,45 +51,19 @@ import axios from "@/api/axios"
 
 const username = ref("")
 const nickname = ref("nickname")
-
 const avatar = ref(null)
-
-const avatarPreview = ref(
-    "/avatars/default.jpg"
-)
-
+const avatarPreview = ref("/avatars/default.jpg")
 const fileInput = ref(null)
 
 async function fetchProfile() {
-
     try {
-
-        const res = await axios.get(
-            "/api/users/me/"
-        )
+        const res = await axios.get("/api/users/me/")
 
         username.value = res.data.username
-
-        nickname.value =
-            res.data.nickname || "nickname"
-
-        if (res.data.avatar_url) {
-
-            avatarPreview.value =
-                res.data.avatar_url
-
-        } else {
-
-            avatarPreview.value =
-                "/avatars/default.jpg"
-        }
-
+        nickname.value = res.data.nickname || "nickname"
+        avatarPreview.value = res.data.avatar_url || "/avatars/default.jpg"
     } catch (err) {
-
-        console.error(
-            "获取用户信息失败",
-            err
-        )
+        console.error("获取用户信息失败", err)
     }
 }
 
@@ -117,162 +72,162 @@ function chooseAvatar() {
 }
 
 function handleFile(e) {
-
     const file = e.target.files[0]
-
     if (!file) return
 
     avatar.value = file
-
-    avatarPreview.value =
-        URL.createObjectURL(file)
+    avatarPreview.value = URL.createObjectURL(file)
 }
 
 async function save() {
-
     const formData = new FormData()
 
-    formData.append(
-        "nickname",
-        nickname.value
-    )
+    formData.append("nickname", nickname.value)
 
     if (avatar.value) {
-
-        formData.append(
-            "avatar",
-            avatar.value
-        )
+        formData.append("avatar", avatar.value)
     }
 
     try {
-
         const res = await axios.post(
             "/api/users/profile/update/",
             formData,
             {
                 headers: {
-                    "Content-Type":
-                        "multipart/form-data"
+                    "Content-Type": "multipart/form-data"
                 }
             }
         )
 
         if (res.data.avatar_url) {
-
-            avatarPreview.value =
-                res.data.avatar_url
+            avatarPreview.value = res.data.avatar_url
         }
 
         alert("保存成功")
-
     } catch (err) {
-
         console.error(err)
-
         alert("保存失败")
     }
 }
 
-onMounted(() => {
-    fetchProfile()
-})
+onMounted(fetchProfile)
 </script>
 
 <style scoped>
-.profile-page{
-    width:100%;
-    height:100%;
-    background:#f5f6fa;
-    display:flex;
-    justify-content:center;
-    align-items:center;
+.profile-page {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    overflow-y: auto;
 }
 
-.profile-card{
-    width:420px;
-    background:white;
-    border-radius:20px;
-    padding:40px;
-    box-shadow:0 4px 20px rgba(0,0,0,0.08);
-    display:flex;
-    flex-direction:column;
-    gap:25px;
+.profile-card {
+    width: min(520px, 100%);
+    padding: 30px;
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(18px);
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
 }
 
-.title{
-    text-align:center;
-    margin:0;
+.heading {
+    text-align: center;
 }
 
-.avatar-section{
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:15px;
+.heading p {
+    margin: 0 0 6px;
+    color: var(--color-muted);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0;
+    text-transform: uppercase;
 }
 
-.avatar{
-    width:120px;
-    height:120px;
-    border-radius:50%;
-    object-fit:cover;
-    border:4px solid #eee;
+.heading h1 {
+    margin: 0;
+    color: #4c4038;
+    font-size: 28px;
 }
 
-.change-btn{
-    padding:10px 20px;
-    border:none;
-    border-radius:10px;
-    background:#5865f2;
-    color:white;
-    cursor:pointer;
+.avatar-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
 }
 
-.change-btn:hover{
-    background:#4752c4;
+.avatar {
+    width: 124px;
+    height: 124px;
+    border: 5px solid rgba(255, 255, 255, 0.82);
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 16px 34px rgba(164, 109, 78, 0.16);
 }
 
-.info-item{
-    display:flex;
-    flex-direction:column;
-    gap:8px;
+.file-input {
+    display: none;
 }
 
-.label{
-    font-size:14px;
-    color:#666;
+.change-btn,
+.save-btn {
+    border-radius: 16px;
+    padding: 12px 18px;
+    background: linear-gradient(135deg, var(--color-primary), #f7a575);
+    color: white;
+    cursor: pointer;
+    font-weight: 900;
+    box-shadow: 0 14px 26px rgba(249, 140, 83, 0.22);
 }
 
-.value{
-    padding:12px;
-    background:#f0f2f5;
-    border-radius:10px;
+.info-grid {
+    display: grid;
+    gap: 14px;
 }
 
-.nickname-input{
-    padding:12px;
-    border:1px solid #ddd;
-    border-radius:10px;
-    outline:none;
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
-.nickname-input:focus{
-    border-color:#5865f2;
+.info-item span {
+    color: #6f625a;
+    font-size: 13px;
+    font-weight: 800;
 }
 
-.save-btn{
-    margin-top:10px;
-    padding:14px;
-    border:none;
-    border-radius:12px;
-    background:#3ba55d;
-    color:white;
-    font-size:16px;
-    cursor:pointer;
+.value,
+.nickname-input {
+    min-height: 46px;
+    border: 1px solid rgba(249, 140, 83, 0.2);
+    border-radius: 16px;
+    padding: 12px 14px;
+    background: rgba(249, 242, 239, 0.76);
+    color: var(--color-text);
 }
 
-.save-btn:hover{
-    background:#2d7d46;
+.nickname-input {
+    outline: none;
+}
+
+.nickname-input:focus {
+    border-color: rgba(249, 140, 83, 0.55);
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(252, 206, 180, 0.3);
+}
+
+.save-btn {
+    width: 100%;
+    min-height: 48px;
+    font-size: 16px;
 }
 </style>

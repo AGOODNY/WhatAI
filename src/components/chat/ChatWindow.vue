@@ -1,4 +1,3 @@
-<!-- 文件：src/components/ChatWindow.vue -->
 <template>
     <div class="chat-area">
         <div class="chat-header">
@@ -6,13 +5,17 @@
         </div>
 
         <div class="chat-content" ref="chatContentRef">
-            <!-- 未选择房间 -->
-            <div v-if="!roomId">
+            <div v-if="!roomId" class="empty-state">
                 请选择一个聊天
             </div>
 
-            <!-- 消息列表 -->
-            <MessageItem v-for="msg in messages" :key="msg.id" :role="msg.role" :content="msg.content" />
+            <MessageItem
+                v-for="msg in messages"
+                :key="msg.id"
+                :role="msg.role"
+                :persona="msg.persona"
+                :content="msg.content"
+            />
         </div>
     </div>
 </template>
@@ -22,65 +25,33 @@ import { ref, watch, onUnmounted, onMounted, nextTick } from "vue"
 import axios from "@/api/axios"
 import MessageItem from "./MessageItem.vue"
 
-/**
- * 接收当前房间ID
- */
 const props = defineProps({
     roomId: Number
 })
 
-/**
- * 房间名称
- */
 const roomName = ref("未选择")
-
-/**
- * 消息列表
- */
 const messages = ref([])
-
-/**
- * DOM 引用
- */
 const chatContentRef = ref(null)
-
-/**
- * 是否在底部（新增）
- */
 const isAtBottom = ref(true)
-
-/**
- * 记录最新消息ID
- */
 const lastId = ref(null)
 
-/**
- * 轮询定时器
- */
 let timer = null
 
-/**
- * 判断是否在底部（新增）
- */
 function checkIfAtBottom() {
     const el = chatContentRef.value
     if (!el) return
 
-    const threshold = 50 // 容忍误差（像微信一样）
+    const threshold = 50
     isAtBottom.value =
         el.scrollHeight - el.scrollTop - el.clientHeight < threshold
 }
 
-/**
- * 平滑滚动到底部（修改）
- */
 async function scrollToBottom(force = false) {
     await nextTick()
 
     const el = chatContentRef.value
     if (!el) return
 
-    // 只有在底部 或 强制滚动 才滚
     if (isAtBottom.value || force) {
         el.scrollTo({
             top: el.scrollHeight,
@@ -89,9 +60,6 @@ async function scrollToBottom(force = false) {
     }
 }
 
-/**
- * 获取房间名称
- */
 async function fetchRoomName() {
     if (!props.roomId) {
         roomName.value = "未选择"
@@ -107,14 +75,11 @@ async function fetchRoomName() {
         roomName.value = room ? room.name : "未知房间"
 
     } catch (err) {
-        console.error("获取房间名失败:", err)
+        console.error("获取房间名称失败", err)
         roomName.value = "加载失败"
     }
 }
 
-/**
- * 获取初始消息
- */
 async function fetchMessages() {
     if (!props.roomId) return
 
@@ -130,8 +95,6 @@ async function fetchMessages() {
         }
 
         console.log("初始消息:", messages.value)
-
-        // 初始加载 → 强制滚到底
         scrollToBottom(true)
 
     } catch (err) {
@@ -139,9 +102,6 @@ async function fetchMessages() {
     }
 }
 
-/**
- * 拉取新增消息
- */
 async function fetchNewMessages() {
     if (!props.roomId || lastId.value === null) return
 
@@ -152,7 +112,6 @@ async function fetchNewMessages() {
 
         const newMsgs = res.data || []
 
-        // 数据保护：确保 newMsgs 是数组
         if (!Array.isArray(newMsgs)) {
             console.error("返回数据不是数组:", newMsgs)
             return
@@ -162,7 +121,6 @@ async function fetchNewMessages() {
             messages.value.push(...newMsgs)
             lastId.value = newMsgs[newMsgs.length - 1].id
 
-            // 只有在底部才滚
             scrollToBottom()
         }
 
@@ -171,9 +129,6 @@ async function fetchNewMessages() {
     }
 }
 
-/**
- * 启动轮询
- */
 function startPolling() {
     stopPolling()
 
@@ -182,9 +137,6 @@ function startPolling() {
     }, 3000)
 }
 
-/**
- * 停止轮询
- */
 function stopPolling() {
     if (timer) {
         clearInterval(timer)
@@ -192,9 +144,6 @@ function stopPolling() {
     }
 }
 
-/**
- * 监听 roomId 变化
- */
 watch(
     () => props.roomId,
     async (newVal) => {
@@ -213,9 +162,6 @@ watch(
     { immediate: true }
 )
 
-/**
- * 监听滚动（新增）
- */
 onMounted(() => {
     const el = chatContentRef.value
     if (el) {
@@ -223,9 +169,6 @@ onMounted(() => {
     }
 })
 
-/**
- * 组件卸载清理
- */
 onUnmounted(() => {
     stopPolling()
 
@@ -239,27 +182,71 @@ onUnmounted(() => {
 <style scoped>
 .chat-area {
     flex: 1;
+    min-width: 0;
+    min-height: 0;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.76);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(18px);
 }
 
 .chat-header {
-    height: 60px;
-    background: white;
-    border-bottom: 1px solid #ddd;
+    min-height: 62px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(252, 206, 180, 0.45));
+    border-bottom: 1px solid rgba(249, 140, 83, 0.18);
     display: flex;
     align-items: center;
-    padding: 0 20px;
-    font-weight: bold;
+    padding: 0 22px;
+    font-size: 16px;
+    font-weight: 800;
+    color: #4c4038;
+    flex: 0 0 auto;
 }
 
 .chat-content {
     flex: 1;
-    padding: 20px;
+    min-height: 0;
+    padding: 24px;
     overflow-y: auto;
+    overflow-x: hidden;
+    background:
+        linear-gradient(rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.35)),
+        radial-gradient(circle at 0 0, rgba(171, 215, 251, 0.22), transparent 18rem),
+        radial-gradient(circle at 100% 100%, rgba(210, 224, 170, 0.18), transparent 20rem);
 }
 
 .message-item {
     margin-bottom: 10px;
+}
+
+.empty-state {
+    min-height: 100%;
+    display: grid;
+    place-items: center;
+    padding: 28px;
+    color: var(--color-muted);
+    font-size: 15px;
+    font-weight: 700;
+    text-align: center;
+}
+
+@media (max-width: 760px) {
+    .chat-area {
+        border-radius: 18px;
+    }
+
+    .chat-header {
+        min-height: 54px;
+        padding: 0 16px;
+        font-size: 15px;
+    }
+
+    .chat-content {
+        padding: 16px;
+    }
 }
 </style>

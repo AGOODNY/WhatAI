@@ -4,7 +4,6 @@
             聊天列表
         </div>
 
-        <!-- 聊天列表 -->
         <div
             v-for="room in rooms"
             :key="room.id"
@@ -20,18 +19,15 @@
                 {{ room.name }}
             </div>
 
-            <!-- 暂停提示 -->
             <div v-if="!room.is_active" class="paused-tag">
                 已暂停
             </div>
         </div>
 
-        <!-- 新建聊天 -->
         <div class="create-btn" @click="handleCreate">
             + 新建聊天
         </div>
 
-        <!-- 右键菜单 -->
         <div
             v-if="menu.visible"
             class="context-menu"
@@ -131,80 +127,162 @@ onMounted(() => {
 
 <style scoped>
 .sidebar {
-    width: 250px;
-    background: #2f3136;
-    color: white;
+    width: clamp(220px, 24vw, 300px);
+    flex: 0 0 clamp(220px, 24vw, 300px);
+    min-width: 0;
+    min-height: 0;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.78);
+    color: var(--color-text);
     display: flex;
     flex-direction: column;
+    gap: 10px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(18px);
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 .sidebar-header {
-    padding: 15px;
-    font-weight: bold;
-    border-bottom: 1px solid #444;
+    padding: 4px 4px 10px;
+    font-size: 18px;
+    font-weight: 800;
+    color: #4c4038;
+    border-bottom: 1px solid rgba(249, 140, 83, 0.18);
 }
 
 .room-item {
-    padding: 12px 15px;
+    padding: 13px 14px;
+    border: 1px solid rgba(171, 215, 251, 0.35);
+    border-radius: 16px;
+    background: rgba(249, 242, 239, 0.78);
     cursor: pointer;
     display: flex;
+    gap: 10px;
     justify-content: space-between;
     align-items: center;
+    box-shadow: 0 8px 20px rgba(164, 109, 78, 0.06);
+    transition:
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
 }
 
 .room-item:hover {
-    background: #40444b;
+    background: #fffaf7;
+    border-color: rgba(249, 140, 83, 0.34);
+    box-shadow: 0 12px 24px rgba(249, 140, 83, 0.12);
+    transform: translateY(-1px);
 }
 
 .room-item.active {
-    background: #5865f2;
+    background: linear-gradient(135deg, rgba(252, 206, 180, 0.95), rgba(171, 215, 251, 0.6));
+    border-color: rgba(249, 140, 83, 0.55);
+    box-shadow: 0 14px 26px rgba(249, 140, 83, 0.17);
 }
 
-/* 暂停状态 */
 .room-item.paused {
-    background: #3a3d42;
-    color: #aaa;
+    background: rgba(210, 224, 170, 0.32);
+    color: var(--color-muted);
 }
 
-/* 名字 */
 .room-name {
     flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 14px;
+    font-weight: 700;
 }
 
-/* 已暂停标签 */
 .paused-tag {
+    flex: 0 0 auto;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(210, 224, 170, 0.65);
+    color: #7c8d3d;
     font-size: 12px;
-    color: #ffcc00;
+    font-weight: 700;
 }
 
 .create-btn {
     margin-top: auto;
-    padding: 15px;
-    background: #3ba55d;
+    padding: 13px 16px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--color-primary), #f7a575);
+    color: #fff;
     text-align: center;
     cursor: pointer;
+    font-size: 14px;
+    font-weight: 800;
+    box-shadow: 0 14px 26px rgba(249, 140, 83, 0.23);
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease,
+        filter 0.2s ease;
 }
 
 .create-btn:hover {
-    background: #2d7d46;
+    filter: saturate(1.05);
+    box-shadow: 0 16px 30px rgba(249, 140, 83, 0.3);
+    transform: translateY(-1px);
 }
 
-/* 右键菜单 */
 .context-menu {
     position: fixed;
-    background: white;
-    color: black;
-    border: 1px solid #ddd;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    min-width: 150px;
+    padding: 6px;
+    background: rgba(255, 255, 255, 0.96);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    box-shadow: var(--shadow-card);
     z-index: 1000;
+    overflow: hidden;
 }
 
 .context-menu div {
-    padding: 10px 20px;
+    padding: 10px 12px;
+    border-radius: 10px;
     cursor: pointer;
+    font-size: 14px;
 }
 
 .context-menu div:hover {
-    background: #f0f0f0;
+    background: rgba(252, 206, 180, 0.5);
+}
+
+@media (max-width: 760px) {
+    .sidebar {
+        width: 100%;
+        flex: 0 0 auto;
+        max-height: 34dvh;
+        padding: 12px;
+        border-radius: 18px;
+    }
+
+    .sidebar-header {
+        font-size: 16px;
+        padding-bottom: 8px;
+    }
+
+    .room-item {
+        padding: 11px 12px;
+    }
+
+    .create-btn {
+        margin-top: 2px;
+        padding: 12px;
+    }
+}
+
+@media (max-width: 520px) {
+    .sidebar {
+        max-height: 30dvh;
+    }
 }
 </style>

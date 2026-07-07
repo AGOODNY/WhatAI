@@ -8,6 +8,7 @@ import HomeView from "../views/HomeView.vue"
 import ProfileView from "../views/ProfileView.vue"
 import PrivateChatView from "../views/PrivateChatView.vue"
 import CreateChatView from "../views/CreateChatView.vue"
+import PersonaLibraryView from "../views/PersonaLibraryView.vue"
 
 const routes = [
     {
@@ -48,6 +49,11 @@ const routes = [
             {
                 path: "/create",
                 component: CreateChatView
+            },
+
+            {
+                path: "/personas",
+                component: PersonaLibraryView
             }
         ]
     }

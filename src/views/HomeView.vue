@@ -1,10 +1,8 @@
 <template>
     <div class="app-container">
-
         <ChatSidebar :currentRoomId="currentRoomId" @selectRoom="selectRoom" @createRoom="goToCreate" />
 
         <ChatWindow :roomId="currentRoomId" :roomName="currentRoomName" />
-
     </div>
 </template>
 
@@ -18,7 +16,7 @@ import ChatWindow from "../components/chat/ChatWindow.vue"
 const router = useRouter()
 
 const currentRoomId = ref(null)
-const rooms = ref([]) // 可选：后续可从store统一管理
+const rooms = ref([])
 
 function selectRoom(id) {
     currentRoomId.value = id
@@ -37,8 +35,19 @@ const currentRoomName = computed(() => {
 
 <style>
 .app-container {
-    width:100%;
-    height:100%;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
     display: flex;
+    gap: 16px;
+    overflow: hidden;
+}
+
+@media (max-width: 760px) {
+    .app-container {
+        flex-direction: column;
+        gap: 10px;
+    }
 }
 </style>

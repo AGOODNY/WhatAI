@@ -76,14 +76,29 @@ onMounted(fetchRooms)
 </script>
 
 <style scoped>
-.private-chat-page{
-    width:100%;
-    height:100%;
-    display:flex;
+.private-chat-page {
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    display: flex;
+    gap: 16px;
+    overflow: hidden;
 }
 
-.content{
-    flex:1;
-    height:100%;
+.content {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    display: flex;
+    overflow: hidden;
+}
+
+@media (max-width: 760px) {
+    .private-chat-page {
+        flex-direction: column;
+        gap: 10px;
+    }
 }
 </style>
