@@ -6,6 +6,7 @@
             :currentRoomId="currentRoom?.id"
             @select="enterRoom"
             @new-chat="backToSelect"
+            @delete-room="deleteRoom"
         />
 
         <div class="content">
@@ -70,6 +71,21 @@ async function handleCreated(room) {
     await fetchRooms()
 
     currentRoom.value = room
+}
+
+async function deleteRoom(room) {
+
+    if (!confirm(`删除私聊「${room.title}」？`)) return
+
+    await axios.delete(
+        `/api/private-chat/rooms/${room.id}/delete/`
+    )
+
+    if (currentRoom.value?.id === room.id) {
+        currentRoom.value = null
+    }
+
+    await fetchRooms()
 }
 
 onMounted(fetchRooms)

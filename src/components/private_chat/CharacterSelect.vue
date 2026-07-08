@@ -70,7 +70,15 @@ async function selectCharacter(persona_id) {
 }
 
 async function createAndChat(payload) {
-    const res = await axios.post("/api/personas/", payload)
+    const res = await axios.post(
+        "/api/personas/",
+        payload,
+        {
+            headers: {
+                "Content-Type": "multipart/form-data"
+            }
+        }
+    )
     personas.value.push(res.data)
     await selectCharacter(res.data.id)
 }

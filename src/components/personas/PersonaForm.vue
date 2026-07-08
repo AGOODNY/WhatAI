@@ -5,10 +5,29 @@
             <input v-model="form.name" placeholder="例如：温柔的观察者" maxlength="80" />
         </label>
 
-        <label>
-            <span>头像地址</span>
-            <input v-model="form.avatar" placeholder="可留空，默认使用系统头像" />
-        </label>
+        <div class="avatar-field">
+            <span>头像</span>
+            <div class="avatar-picker">
+                <img :src="avatarPreview" class="avatar-preview" alt="persona avatar" />
+                <div class="avatar-actions">
+                    <button type="button" class="upload-btn" @click="chooseAvatar">
+                        上传头像
+                    </button>
+                    <button v-if="hasCustomAvatar" type="button" class="clear-btn" @click="clearAvatar">
+                        移除
+                    </button>
+                </div>
+            </div>
+            <input
+                ref="fileInput"
+                type="file"
+                accept="image/*"
+                class="file-input"
+                hidden
+                style="display: none"
+                @change="handleFile"
+            />
+        </div>
 
         <label>
             <span>性格描述</span>
@@ -35,7 +54,7 @@
 </template>
 
 <script setup>
-import { reactive, watch } from "vue"
+import { computed, reactive, ref, watch } from "vue"
 
 const props = defineProps({
     persona: Object,
@@ -51,6 +70,10 @@ const props = defineProps({
 
 const emit = defineEmits(["submit", "cancel"])
 
+const fileInput = ref(null)
+const avatarFile = ref(null)
+const localPreview = ref("")
+
 const form = reactive({
     name: "",
     avatar: "",
@@ -59,12 +82,20 @@ const form = reactive({
     personality_prompt: "",
 })
 
+const avatarPreview = computed(() => {
+    return localPreview.value || form.avatar || props.persona?.avatar_url || "/avatars/default.jpg"
+})
+
+const hasCustomAvatar = computed(() => Boolean(avatarFile.value || form.avatar))
+
 function fillForm(persona) {
     form.name = persona?.name || ""
     form.avatar = persona?.avatar || ""
     form.description = persona?.description || ""
     form.speaking_style = persona?.speaking_style || ""
     form.personality_prompt = persona?.personality_prompt || ""
+    avatarFile.value = null
+    localPreview.value = ""
 }
 
 watch(
@@ -73,13 +104,46 @@ watch(
     { immediate: true }
 )
 
+function chooseAvatar() {
+    fileInput.value?.click()
+}
+
+function handleFile(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    avatarFile.value = file
+    localPreview.value = URL.createObjectURL(file)
+}
+
+function clearAvatar() {
+    avatarFile.value = null
+    localPreview.value = ""
+    form.avatar = ""
+
+    if (fileInput.value) {
+        fileInput.value.value = ""
+    }
+}
+
 function submit() {
     if (!form.name.trim()) {
         alert("请填写人格名称")
         return
     }
 
-    emit("submit", { ...form })
+    const formData = new FormData()
+    formData.append("name", form.name)
+    formData.append("avatar", form.avatar)
+    formData.append("description", form.description)
+    formData.append("speaking_style", form.speaking_style)
+    formData.append("personality_prompt", form.personality_prompt)
+
+    if (avatarFile.value) {
+        formData.append("avatar_file", avatarFile.value)
+    }
+
+    emit("submit", formData)
 }
 </script>
 
@@ -90,7 +154,8 @@ function submit() {
     gap: 14px;
 }
 
-label {
+label,
+.avatar-field {
     display: flex;
     flex-direction: column;
     gap: 7px;
@@ -130,6 +195,36 @@ textarea {
     resize: vertical;
 }
 
+.avatar-picker {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px;
+    border: 1px solid rgba(171, 215, 251, 0.36);
+    border-radius: 18px;
+    background: rgba(249, 242, 239, 0.7);
+}
+
+.avatar-preview {
+    width: 64px;
+    height: 64px;
+    flex: 0 0 auto;
+    border: 3px solid rgba(255, 255, 255, 0.88);
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 10px 22px rgba(164, 109, 78, 0.12);
+}
+
+.avatar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.file-input {
+    display: none;
+}
+
 .actions {
     display: flex;
     gap: 10px;
@@ -146,9 +241,22 @@ button {
     box-shadow: 0 14px 26px rgba(249, 140, 83, 0.2);
 }
 
+.upload-btn {
+    padding: 10px 14px;
+    box-shadow: none;
+}
+
+.clear-btn,
 .ghost {
     background: rgba(249, 242, 239, 0.9);
     color: var(--color-text);
     box-shadow: none;
+}
+
+@media (max-width: 520px) {
+    .avatar-picker {
+        align-items: flex-start;
+        flex-direction: column;
+    }
 }
 </style>

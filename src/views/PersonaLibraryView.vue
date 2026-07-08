@@ -72,10 +72,16 @@ function startEdit(persona) {
 }
 
 async function savePersona(payload) {
+    const config = {
+        headers: {
+            "Content-Type": "multipart/form-data"
+        }
+    }
+
     if (editing.value?.id) {
-        await axios.patch(`/api/personas/${editing.value.id}/`, payload)
+        await axios.patch(`/api/personas/${editing.value.id}/`, payload, config)
     } else {
-        await axios.post("/api/personas/", payload)
+        await axios.post("/api/personas/", payload, config)
     }
 
     editing.value = null

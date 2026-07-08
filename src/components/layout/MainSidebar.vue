@@ -1,42 +1,41 @@
 <template>
     <div class="main-sidebar">
-        <div class="nav-item" @click="goHome">
-            群聊
-        </div>
-
-        <div class="nav-item" @click="goPrivate">
-            私聊
-        </div>
-
-        <div class="nav-item" @click="goPersonas">
-            人格库
-        </div>
-
-        <div class="nav-item" @click="goProfile">
-            个人中心
-        </div>
+        <button
+            v-for="item in navItems"
+            :key="item.path"
+            class="nav-item"
+            :class="{ active: isActive(item.path) }"
+            type="button"
+            @click="go(item.path)"
+        >
+            {{ item.label }}
+        </button>
     </div>
 </template>
 
 <script setup>
-import { useRouter } from "vue-router"
+import { useRoute, useRouter } from "vue-router"
 
 const router = useRouter()
+const route = useRoute()
 
-function goHome() {
-    router.push("/")
+const navItems = [
+    { label: "群聊", path: "/group" },
+    { label: "私聊", path: "/private" },
+    { label: "人格库", path: "/personas" },
+    { label: "个人中心", path: "/profile" },
+]
+
+function go(path) {
+    router.push(path)
 }
 
-function goPrivate() {
-    router.push("/private")
-}
+function isActive(path) {
+    if (path === "/group") {
+        return route.path === "/" || route.path === "/group" || route.path === "/create"
+    }
 
-function goPersonas() {
-    router.push("/personas")
-}
-
-function goProfile() {
-    router.push("/profile")
+    return route.path === path || route.path.startsWith(`${path}/`)
 }
 </script>
 
@@ -61,6 +60,7 @@ function goProfile() {
     min-height: 44px;
     padding: 12px 14px;
     border-radius: 14px;
+    background: transparent;
     cursor: pointer;
     font-size: 14px;
     font-weight: 700;
@@ -74,11 +74,16 @@ function goProfile() {
         box-shadow 0.2s ease;
 }
 
-.nav-item:hover {
+.nav-item:hover,
+.nav-item.active {
     background: linear-gradient(135deg, rgba(252, 206, 180, 0.75), rgba(171, 215, 251, 0.45));
     color: #3d332d;
     box-shadow: 0 8px 20px rgba(249, 140, 83, 0.14);
     transform: translateY(-1px);
+}
+
+.nav-item.active {
+    border: 1px solid rgba(249, 140, 83, 0.28);
 }
 
 @media (max-width: 760px) {

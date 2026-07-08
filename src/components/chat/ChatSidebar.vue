@@ -1,19 +1,27 @@
 <template>
-    <div class="sidebar">
+    <div
+        class="sidebar"
+        @contextmenu.capture.prevent="openMenuFromEvent"
+        @pointerdown.capture="handlePointerDown"
+    >
         <div class="sidebar-header">
-            聊天列表
+            <span>聊天列表</span>
+            <span class="sidebar-hint">右键管理生成</span>
         </div>
 
         <div
             v-for="room in rooms"
             :key="room.id"
+            :data-room-id="room.id"
             class="room-item"
             :class="[
                 { active: room.id === currentRoomId },
                 { paused: !room.is_active }
             ]"
             @click="handleSelect(room.id)"
-            @contextmenu.prevent="openMenu($event, room)"
+            @mousedown.right.prevent.stop="openMenu($event, room)"
+            @mouseup.right.prevent.stop="openMenu($event, room)"
+            @contextmenu.prevent.stop="openMenu($event, room)"
         >
             <div class="room-name">
                 {{ room.name }}
@@ -27,22 +35,29 @@
         <div class="create-btn" @click="handleCreate">
             + 新建聊天
         </div>
+    </div>
 
+    <Teleport to="body">
         <div
             v-if="menu.visible"
-            class="context-menu"
-            :style="{ top: menu.y + 'px', left: menu.x + 'px' }"
+            class="group-room-context-menu"
+            :style="menuStyle"
+            @click.stop
+            @mousedown.stop
+            @contextmenu.prevent.stop
         >
-            <div @click="deleteRoom(menu.room)">删除房间</div>
-            <div @click="toggleRoom(menu.room)">
+            <button class="group-room-menu-item" type="button" @click="toggleRoom(menu.room)">
                 {{ menu.room?.is_active ? "暂停生成" : "继续生成" }}
-            </div>
+            </button>
+            <button class="group-room-menu-item danger" type="button" @click="deleteRoom(menu.room)">
+                删除房间
+            </button>
         </div>
-    </div>
+    </Teleport>
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue"
+import { computed, ref, onMounted, onUnmounted } from "vue"
 import axios from "@/api/axios"
 import { useRouter } from "vue-router"
 
@@ -63,6 +78,22 @@ const menu = ref({
     room: null
 })
 
+const menuStyle = computed(() => ({
+    position: "fixed",
+    top: `${menu.value.y}px`,
+    left: `${menu.value.x}px`,
+    zIndex: 99999,
+    minWidth: "148px",
+    padding: "8px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "4px",
+    background: "rgba(255, 255, 255, 0.98)",
+    border: "1px solid var(--color-border)",
+    borderRadius: "16px",
+    boxShadow: "0 18px 45px rgba(164, 109, 78, 0.2)",
+}))
+
 async function fetchRooms() {
     try {
         const res = await axios.get("/api/chat/rooms/")
@@ -79,15 +110,47 @@ function handleSelect(id) {
 }
 
 function openMenu(e, room) {
+    const menuWidth = 148
+    const menuHeight = 98
+    const padding = 12
+
     menu.value = {
         visible: true,
-        x: e.clientX,
-        y: e.clientY,
+        x: Math.min(e.clientX, window.innerWidth - menuWidth - padding),
+        y: Math.min(e.clientY, window.innerHeight - menuHeight - padding),
         room
     }
 }
 
+function findRoomFromEvent(e) {
+    const item = e.target?.closest?.("[data-room-id]")
+    if (!item) return null
+
+    const roomId = Number(item.dataset.roomId)
+    return rooms.value.find(room => room.id === roomId) || null
+}
+
+function openMenuFromEvent(e) {
+    const room = findRoomFromEvent(e)
+    if (!room) return
+
+    openMenu(e, room)
+}
+
+function handlePointerDown(e) {
+    if (e.button !== 2) return
+
+    const room = findRoomFromEvent(e)
+    if (!room) return
+
+    e.preventDefault()
+    e.stopPropagation()
+    openMenu(e, room)
+}
+
 async function deleteRoom(room) {
+    if (!room) return
+
     try {
         await axios.delete(`/api/chat/rooms/${room.id}/delete/`)
 
@@ -100,11 +163,12 @@ async function deleteRoom(room) {
 }
 
 async function toggleRoom(room) {
+    if (!room) return
+
     try {
         const res = await axios.post(`/api/chat/rooms/${room.id}/toggle/`)
 
         room.is_active = res.data.is_active
-
         menu.value.visible = false
 
     } catch (err) {
@@ -116,12 +180,21 @@ function handleCreate() {
     router.push("/create")
 }
 
+function closeMenu() {
+    menu.value.visible = false
+}
+
 onMounted(() => {
     fetchRooms()
+    window.addEventListener("click", closeMenu)
+    window.addEventListener("resize", closeMenu)
+    window.addEventListener("scroll", closeMenu, true)
+})
 
-    window.addEventListener("click", () => {
-        menu.value.visible = false
-    })
+onUnmounted(() => {
+    window.removeEventListener("click", closeMenu)
+    window.removeEventListener("resize", closeMenu)
+    window.removeEventListener("scroll", closeMenu, true)
 })
 </script>
 
@@ -147,10 +220,22 @@ onMounted(() => {
 
 .sidebar-header {
     padding: 4px 4px 10px;
+    border-bottom: 1px solid rgba(249, 140, 83, 0.18);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.sidebar-header span:first-child {
     font-size: 18px;
     font-weight: 800;
     color: #4c4038;
-    border-bottom: 1px solid rgba(249, 140, 83, 0.18);
+}
+
+.sidebar-hint {
+    color: var(--color-muted);
+    font-size: 12px;
+    font-weight: 700;
 }
 
 .room-item {
@@ -232,28 +317,49 @@ onMounted(() => {
     transform: translateY(-1px);
 }
 
-.context-menu {
+:global(.group-room-context-menu) {
     position: fixed;
-    min-width: 150px;
-    padding: 6px;
-    background: rgba(255, 255, 255, 0.96);
+    min-width: 148px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.98);
     color: var(--color-text);
     border: 1px solid var(--color-border);
-    border-radius: 14px;
-    box-shadow: var(--shadow-card);
-    z-index: 1000;
-    overflow: hidden;
+    border-radius: 16px;
+    box-shadow: 0 18px 45px rgba(164, 109, 78, 0.2);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
-.context-menu div {
-    padding: 10px 12px;
-    border-radius: 10px;
+:global(.group-room-menu-item) {
+    width: 100%;
+    min-height: 38px;
+    padding: 9px 12px;
+    border-radius: 12px;
+    background: transparent;
+    color: #5f5148;
     cursor: pointer;
     font-size: 14px;
+    font-weight: 800;
+    text-align: left;
+    transition:
+        background-color 0.2s ease,
+        color 0.2s ease;
 }
 
-.context-menu div:hover {
-    background: rgba(252, 206, 180, 0.5);
+:global(.group-room-menu-item:hover) {
+    background: rgba(171, 215, 251, 0.42);
+    color: #38586f;
+}
+
+:global(.group-room-menu-item.danger) {
+    color: #b76343;
+}
+
+:global(.group-room-menu-item.danger:hover) {
+    background: rgba(252, 206, 180, 0.48);
+    color: #8f3f25;
 }
 
 @media (max-width: 760px) {
@@ -265,9 +371,8 @@ onMounted(() => {
         border-radius: 18px;
     }
 
-    .sidebar-header {
+    .sidebar-header span:first-child {
         font-size: 16px;
-        padding-bottom: 8px;
     }
 
     .room-item {
