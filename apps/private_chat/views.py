@@ -70,6 +70,27 @@ class PrivateRoomListView(APIView):
         return Response(serializer.data)
 
 
+class DeletePrivateRoomView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, room_id):
+
+        room = (
+            PrivateChatRoom.objects.filter(
+                id=room_id,
+                user=request.user
+            ).first()
+        )
+
+        if not room:
+            return Response({"error": "not found"}, status=404)
+
+        room.delete()
+
+        return Response(status=204)
+
+
 # 获取消息
 class PrivateMessageListView(APIView):
 

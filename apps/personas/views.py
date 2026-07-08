@@ -1,4 +1,5 @@
 from django.db.models import Q
+from django.core.files.storage import default_storage
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -14,6 +15,18 @@ def visible_personas(user):
     ).order_by("-is_builtin", "created_at", "id")
 
 
+def persona_payload(request):
+    data = request.data.copy()
+    avatar_file = request.FILES.get("avatar_file")
+
+    if avatar_file:
+        path = default_storage.save(f"persona_avatars/{avatar_file.name}", avatar_file)
+        data["avatar"] = default_storage.url(path)
+
+    data.pop("avatar_file", None)
+    return data
+
+
 class PersonaListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -25,7 +38,7 @@ class PersonaListCreateView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = PersonaSerializer(data=request.data)
+        serializer = PersonaSerializer(data=persona_payload(request))
         if serializer.is_valid():
             persona = serializer.save(
                 owner=request.user,
@@ -55,7 +68,7 @@ class PersonaDetailView(APIView):
 
         serializer = PersonaSerializer(
             persona,
-            data=request.data,
+            data=persona_payload(request),
             partial=True,
         )
         if serializer.is_valid():

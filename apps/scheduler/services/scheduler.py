@@ -1,79 +1,70 @@
 import random
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 
 
-ROLES = ["A", "B", "C", "D"]
-
-# 每个人的“话痨程度”（权重）
-BASE_WEIGHTS = {
-    "A": 1.0,
-    "B": 1.3,  # 更爱说话
-    "C": 0.7,
-    "D": 1.2
-}
-
-
-def _penalize_last_speaker(weights: dict, last_role: Optional[str]):
-    """
-    防止连续说话：大幅降低上一个人的权重
-    """
-    if last_role and last_role in weights:
-        weights[last_role] *= 0.1
-
-
-def _boost_if_mentioned(weights: dict, history: List[Dict]):
-    """
-    如果有人被“点名”，提高他说话概率
-    简单规则：文本中出现 A/B/C/D
-    """
-    if not history:
-        return
-
-    last_msg = history[-1]["content"]
-
-    for role in weights.keys():
-        if role in last_msg:
-            weights[role] *= 1.8
-
-
-def _random_by_weight(weights: dict) -> str:
+def _random_by_weight(weights: Dict[str, float]) -> Optional[str]:
+    weights = {role: max(value, 0.01) for role, value in weights.items()}
     roles = list(weights.keys())
     values = list(weights.values())
 
-    total = sum(values)
-    probs = [v / total for v in values]
+    if not roles:
+        return None
 
-    return random.choices(roles, probs)[0]
+    return random.choices(roles, weights=values, k=1)[0]
+
+
+def _mentioned_in_last_message(role: str, persona, history: List[Dict]) -> bool:
+    if not history:
+        return False
+
+    text = history[-1].get("content", "")
+    names = {role}
+
+    if persona:
+        names.add(str(getattr(persona, "id", "")))
+        names.add(getattr(persona, "name", ""))
+        legacy_role = getattr(persona, "legacy_role", None)
+        if legacy_role:
+            names.add(str(legacy_role))
+
+    return any(name and name in text for name in names)
 
 
 def choose_next_speaker(
     history: List[Dict],
     last_role: Optional[str] = None,
     roles: Optional[List[str]] = None,
-) -> str:
-    """
-    输入：
-        history: [{"role": "A", "content": "..."}]
-        last_role: 上一个发言人
+    personas: Optional[List] = None,
+) -> Optional[str]:
+    active_roles = roles or ["A", "B", "C", "D"]
+    if not active_roles:
+        return None
 
-    输出：
-        下一位发言人
-    """
-
-    # 1）基础权重
-    active_roles = roles or ROLES
-    weights = {
-        role: BASE_WEIGHTS.get(role, 1.0)
-        for role in active_roles
+    persona_by_role = {
+        str(getattr(persona, "id", "")): persona
+        for persona in personas or []
     }
 
-    # 2）避免连续说话
-    _penalize_last_speaker(weights, last_role)
+    weights = {role: 1.0 for role in active_roles}
 
-    # 3）被点名优先
-    _boost_if_mentioned(weights, history)
+    recent_roles = [
+        str(msg.get("role"))
+        for msg in history[-8:]
+        if msg.get("role") != "system"
+    ]
 
-    # 4）随机选择（带权重）
-    next_role = _random_by_weight(weights)
+    for role in active_roles:
+        recent_count = recent_roles.count(role)
+        if recent_count:
+            weights[role] *= max(0.35, 1.0 - recent_count * 0.18)
 
-    return next_role
+        if role == last_role:
+            weights[role] *= 0.08
+
+        if role in recent_roles[-2:]:
+            weights[role] *= 0.35
+
+        if _mentioned_in_last_message(role, persona_by_role.get(role), history):
+            weights[role] *= 1.5
+
+    return _random_by_weight(weights)

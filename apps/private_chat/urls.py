@@ -15,6 +15,11 @@ urlpatterns = [
     ),
 
     path(
+        "rooms/<int:room_id>/delete/",
+        DeletePrivateRoomView.as_view()
+    ),
+
+    path(
         "rooms/<int:room_id>/messages/",
         PrivateMessageListView.as_view()
     ),
