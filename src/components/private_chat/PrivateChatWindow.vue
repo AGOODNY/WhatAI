@@ -124,17 +124,33 @@ async function sendMessage(content) {
             res.data.user_message
         )
 
-        messages.value.push(
-            res.data.ai_message
-        )
+        const aiMessages = Array.isArray(res.data.ai_messages)
+            ? res.data.ai_messages
+            : (res.data.ai_message ? [res.data.ai_message] : [])
 
-        await nextTick()
-
-        scrollToBottom()
+        await appendAiMessages(aiMessages)
 
     } catch (err) {
 
         console.error(err)
+    }
+}
+
+function wait(ms) {
+    return new Promise(resolve => {
+        setTimeout(resolve, ms)
+    })
+}
+
+async function appendAiMessages(aiMessages) {
+    for (let i = 0; i < aiMessages.length; i++) {
+        if (i > 0) {
+            await wait(450 + Math.floor(Math.random() * 251))
+        }
+
+        messages.value.push(aiMessages[i])
+        await nextTick()
+        scrollToBottom()
     }
 }
 

@@ -1,44 +1,69 @@
 <template>
     <div class="create-page">
-        <section class="main">
-            <h2>创建群聊</h2>
-
-            <div class="form-item">
-                <label>聊天名称</label>
-                <input v-model="name" placeholder="例如：小说讨论会" />
+        <section class="personas-panel">
+            <div class="panel-header">
+                <div>
+                    <p>Group chat</p>
+                    <h2>创建群聊</h2>
+                </div>
+                <button class="toggle-create-btn" type="button" @click="showCreate = !showCreate">
+                    {{ showCreate ? "收起创建" : "新建人格" }}
+                </button>
             </div>
 
-            <div class="form-item">
-                <label>聊天情景</label>
-                <textarea v-model="scenario" placeholder="例如：几位角色正在讨论一部科幻小说" />
+            <div class="setup-panel">
+                <label class="form-item">
+                    <span>聊天名称</span>
+                    <input v-model="name" placeholder="例如：小说讨论会" />
+                </label>
+
+                <label class="form-item">
+                    <span>聊天情景</span>
+                    <textarea v-model="scenario" placeholder="例如：几位角色正在讨论一部科幻小说" />
+                </label>
+
+                <div class="setup-actions">
+                    <div class="button-row">
+                        <button class="primary-btn" type="button" @click="handleCreate">
+                            创建群聊
+                        </button>
+                        <button class="ghost-btn" type="button" @click="goBack">
+                            取消
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <div class="section-title">
-                选择 2-4 个 AI 人格
+                <p>Personas</p>
+                <div class="section-title-row">
+                    <h3>选择 2-4 个人格</h3>
+                    <span class="count-pill">已选 {{ selectedIds.length }}/4</span>
+                </div>
             </div>
 
             <div class="persona-grid">
-                <div
+                <button
                     v-for="persona in personas"
                     :key="persona.id"
+                    type="button"
                     class="persona-card"
                     :class="{ selected: selectedIds.includes(persona.id) }"
                     @click="togglePersona(persona)"
                 >
                     <img :src="persona.avatar_url" class="avatar" />
-                    <div class="name">{{ persona.name }}</div>
-                    <div class="tag">{{ persona.is_builtin ? "内置" : "我的" }}</div>
-                </div>
-            </div>
-
-            <div class="actions">
-                <button @click="handleCreate">创建</button>
-                <button class="cancel" @click="goBack">取消</button>
+                    <span class="name">{{ persona.name }}</span>
+                    <span class="tag">{{ persona.is_builtin ? "内置" : "我的" }}</span>
+                    <span class="desc">{{ persona.description || "适合加入新的群聊" }}</span>
+                </button>
             </div>
         </section>
 
-        <aside class="quick-create">
-            <h3>快速新建人格</h3>
+        <aside v-if="showCreate" class="creator">
+            <div class="creator-title">
+                <p>New persona</p>
+                <h3>快速新建人格</h3>
+            </div>
             <PersonaForm
                 submitText="添加到人格库"
                 :showCancel="false"
@@ -60,6 +85,7 @@ const name = ref("")
 const scenario = ref("")
 const personas = ref([])
 const selectedIds = ref([])
+const showCreate = ref(false)
 
 async function fetchPersonas() {
     const res = await axios.get("/api/personas/")
@@ -83,7 +109,16 @@ function togglePersona(persona) {
 }
 
 async function createPersona(payload) {
-    const res = await axios.post("/api/personas/", payload)
+    const res = await axios.post(
+        "/api/personas/",
+        payload,
+        {
+            headers: {
+                "Content-Type": "multipart/form-data"
+            }
+        }
+    )
+
     personas.value.push(res.data)
     if (selectedIds.value.length < 4) {
         selectedIds.value.push(res.data.id)
@@ -128,111 +163,287 @@ onMounted(fetchPersonas)
 
 <style scoped>
 .create-page {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
     height: 100%;
     display: flex;
-    background: #f5f7fb;
+    gap: 16px;
 }
 
-.main {
+.personas-panel,
+.creator {
+    background: rgba(255, 255, 255, 0.76);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(18px);
+}
+
+.personas-panel {
     flex: 1;
-    padding: 32px;
+    min-width: 0;
+    padding: 24px;
     overflow-y: auto;
 }
 
-.quick-create {
-    width: 360px;
-    padding: 32px;
-    background: white;
-    border-left: 1px solid #e5e7eb;
-    overflow-y: auto;
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 18px;
+    margin-bottom: 20px;
+}
+
+p {
+    margin: 0 0 6px;
+    color: var(--color-muted);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0;
+    text-transform: uppercase;
 }
 
 h2,
 h3 {
-    margin-top: 0;
+    margin: 0;
+    color: #4c4038;
+}
+
+.toggle-create-btn,
+.primary-btn,
+.ghost-btn {
+    flex: 0 0 auto;
+    border: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    border-radius: 16px;
+    padding: 12px 16px;
+    cursor: pointer;
+    font-weight: 900;
+}
+
+.toggle-create-btn,
+.primary-btn {
+    background: linear-gradient(135deg, var(--color-primary), #f7a575);
+    color: #fff;
+    box-shadow: 0 14px 26px rgba(249, 140, 83, 0.22);
+}
+
+.toggle-create-btn:hover,
+.primary-btn:hover {
+    filter: saturate(1.05);
+    box-shadow: 0 16px 30px rgba(249, 140, 83, 0.3);
+    transform: translateY(-1px);
+}
+
+.setup-panel {
+    margin-bottom: 20px;
+    padding: 16px;
+    border: 1px solid rgba(171, 215, 251, 0.34);
+    border-radius: 18px;
+    background: rgba(249, 242, 239, 0.76);
+    box-shadow: 0 10px 24px rgba(164, 109, 78, 0.07);
+    display: grid;
+    gap: 14px;
 }
 
 .form-item {
-    margin-bottom: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
-label,
-.section-title {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 700;
+.form-item span {
+    color: #6f625a;
+    font-size: 13px;
+    font-weight: 800;
 }
 
 input,
 textarea {
     width: 100%;
-    box-sizing: border-box;
-    border: 1px solid #d8dee8;
-    border-radius: 8px;
-    padding: 11px 12px;
-    font-size: 14px;
+    min-width: 0;
+    border: 1px solid rgba(249, 140, 83, 0.2);
+    border-radius: 16px;
+    padding: 12px 14px;
+    background: rgba(255, 255, 255, 0.84);
+    color: var(--color-text);
+    outline: none;
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        background-color 0.2s ease;
+}
+
+input:focus,
+textarea:focus {
+    border-color: rgba(249, 140, 83, 0.55);
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(252, 206, 180, 0.34);
 }
 
 textarea {
-    min-height: 110px;
+    min-height: 92px;
     resize: vertical;
 }
 
-.persona-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 14px;
+.setup-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
 }
 
-.persona-card {
-    background: white;
-    border: 2px solid transparent;
-    border-radius: 8px;
-    padding: 14px;
-    cursor: pointer;
-    text-align: center;
+.count-pill {
+    flex: 0 0 auto;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: rgba(171, 215, 251, 0.45);
+    color: #467399;
+    font-size: 13px;
+    font-weight: 900;
 }
 
-.persona-card.selected {
-    border-color: #5865f2;
-    background: #eef2ff;
-}
-
-.avatar {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    object-fit: cover;
-}
-
-.name {
-    margin-top: 10px;
-    font-weight: 700;
-}
-
-.tag {
-    margin-top: 4px;
-    font-size: 12px;
-    color: #5865f2;
-}
-
-.actions {
-    margin-top: 24px;
+.button-row {
     display: flex;
     gap: 10px;
 }
 
-button {
-    border: 0;
-    border-radius: 8px;
-    padding: 10px 18px;
-    background: #5865f2;
-    color: white;
-    cursor: pointer;
+.ghost-btn {
+    border-radius: 16px;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.74);
+    color: var(--color-text);
 }
 
-.cancel {
-    background: #d1d5db;
-    color: #111827;
+.section-title {
+    margin-bottom: 14px;
+}
+
+.section-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.persona-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 14px;
+}
+
+.persona-card {
+    min-height: 238px;
+    padding: 18px;
+    border: 1px solid rgba(171, 215, 251, 0.34);
+    border-radius: 18px;
+    background: rgba(249, 242, 239, 0.76);
+    color: var(--color-text);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    box-shadow: 0 10px 24px rgba(164, 109, 78, 0.07);
+    transition:
+        transform 0.2s ease,
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        background-color 0.2s ease;
+}
+
+.persona-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(249, 140, 83, 0.45);
+    background: #fffaf7;
+    box-shadow: 0 16px 28px rgba(249, 140, 83, 0.14);
+}
+
+.persona-card.selected {
+    background: linear-gradient(135deg, rgba(252, 206, 180, 0.95), rgba(171, 215, 251, 0.58));
+    border-color: rgba(249, 140, 83, 0.58);
+    box-shadow: 0 16px 30px rgba(249, 140, 83, 0.18);
+}
+
+.avatar {
+    width: 84px;
+    height: 84px;
+    border: 4px solid rgba(255, 255, 255, 0.82);
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 10px 22px rgba(164, 109, 78, 0.14);
+}
+
+.name {
+    width: 100%;
+    margin-top: 14px;
+    overflow: hidden;
+    color: #4c4038;
+    font-size: 17px;
+    font-weight: 900;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tag {
+    margin-top: 7px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(171, 215, 251, 0.45);
+    color: #467399;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.desc {
+    width: 100%;
+    margin-top: 12px;
+    color: var(--color-muted);
+    font-size: 13px;
+    line-height: 1.5;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.creator {
+    width: min(380px, 36vw);
+    min-width: 320px;
+    padding: 24px;
+    overflow-y: auto;
+}
+
+.creator-title {
+    margin-bottom: 18px;
+}
+
+@media (max-width: 920px) {
+    .create-page {
+        flex-direction: column;
+    }
+
+    .creator {
+        width: 100%;
+        min-width: 0;
+    }
+}
+
+@media (max-width: 560px) {
+    .panel-header,
+    .setup-actions,
+    .button-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .panel-header button,
+    .toggle-create-btn,
+    .primary-btn,
+    .ghost-btn {
+        width: 100%;
+    }
 }
 </style>
