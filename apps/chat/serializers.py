@@ -12,11 +12,13 @@ class ChatRoomSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "scenario",
+            "owner",
             "created_at",
             "is_active",
             "started_at",
             "personas",
         ]
+        read_only_fields = ["owner"]
 
 
 class MessageSerializer(serializers.ModelSerializer):

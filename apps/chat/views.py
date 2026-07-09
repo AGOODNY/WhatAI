@@ -15,7 +15,7 @@ class ChatRoomListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        rooms = ChatRoom.objects.all().order_by("-id")
+        rooms = ChatRoom.objects.filter(owner=request.user).order_by("-id")
         serializer = ChatRoomSerializer(rooms, many=True)
         return Response(serializer.data)
 
@@ -63,6 +63,7 @@ class CreateChatRoomView(APIView):
         room = ChatRoom.objects.create(
             name=name,
             scenario=scenario,
+            owner=request.user,
             is_active=True,
             started_at=timezone.now()
         )
@@ -79,6 +80,14 @@ class MessageListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, room_id):
+        room = ChatRoom.objects.filter(
+            id=room_id,
+            owner=request.user
+        ).first()
+
+        if not room:
+            return Response({"error": "not found"}, status=404)
+
         last_id = request.GET.get("last_id")
 
         if last_id:
@@ -99,7 +108,7 @@ class DeleteRoomView(APIView):
 
     def delete(self, request, room_id):
         try:
-            room = ChatRoom.objects.get(id=room_id)
+            room = ChatRoom.objects.get(id=room_id, owner=request.user)
             room.delete()
             return Response({"msg": "deleted"})
         except ChatRoom.DoesNotExist:
@@ -112,7 +121,7 @@ class ToggleRoomActiveView(APIView):
 
     def post(self, request, room_id):
         try:
-            room = ChatRoom.objects.get(id=room_id)
+            room = ChatRoom.objects.get(id=room_id, owner=request.user)
             room.is_active = not room.is_active
 
             if room.is_active:

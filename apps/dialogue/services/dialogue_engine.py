@@ -1,3 +1,4 @@
+import json
 import re
 
 from .prompt_builder import build_prompt
@@ -118,3 +119,76 @@ def generate_message(
             return reply
 
     return ""
+
+
+def _extract_json_array(text):
+    text = (text or "").strip()
+
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        match = re.search(r"\[[\s\S]*\]", text)
+        if not match:
+            return None
+        try:
+            data = json.loads(match.group(0))
+        except json.JSONDecodeError:
+            return None
+
+    if not isinstance(data, list):
+        return None
+
+    return data
+
+
+def clean_reply_list(items, history=None, max_items=4, max_chars=60):
+    history = history or []
+    replies = []
+    seen = set()
+
+    for item in items or []:
+        if not isinstance(item, str):
+            continue
+
+        reply = clean_reply(item, max_chars=max_chars)
+        key = reply.strip()
+
+        if not key or key in seen:
+            continue
+
+        if _looks_invalid(reply):
+            continue
+
+        recent_contents = [
+            msg.get("content", "").strip()
+            for msg in history[-5:]
+        ]
+        if reply in recent_contents or reply in replies:
+            continue
+
+        seen.add(key)
+        replies.append(reply)
+
+        if len(replies) >= max_items:
+            break
+
+    return replies
+
+
+def generate_private_messages(role, history):
+    context = MemoryManager.build_context(history)
+    prompt = build_private_prompt(role, context, multi_bubble=True)
+    response = llm_client.generate(prompt)
+
+    parsed = _extract_json_array(response)
+    replies = clean_reply_list(parsed, history=context)
+
+    if replies:
+        return replies
+
+    fallback = generate_message(
+        role=role,
+        history=history,
+        is_private=True,
+    )
+    return [fallback] if fallback else []

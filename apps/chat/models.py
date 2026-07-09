@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 from django.utils import timezone
 
 class ChatRoom(models.Model):
@@ -7,6 +8,13 @@ class ChatRoom(models.Model):
     """
     name = models.CharField(max_length=100)
     scenario = models.TextField()
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="chat_rooms",
+        blank=True,
+        null=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     is_active = models.BooleanField(default=True)

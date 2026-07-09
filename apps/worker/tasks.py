@@ -61,7 +61,7 @@ def _should_skip_turn(history):
 
 def run_one_step_for_room(room_id, last_role=None):
     history = get_history(room_id)
-    room = ChatRoom.objects.filter(id=room_id).first()
+    room = ChatRoom.objects.filter(id=room_id, owner__isnull=False).first()
     if not room:
         return last_role
 
@@ -105,7 +105,7 @@ def start_worker():
 
     while True:
         now = time.monotonic()
-        rooms = ChatRoom.objects.filter(is_active=True)
+        rooms = ChatRoom.objects.filter(is_active=True, owner__isnull=False)
 
         for room in rooms:
             if next_run_at.get(room.id, 0) > now:

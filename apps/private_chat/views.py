@@ -130,7 +130,7 @@ class SendPrivateMessageView(APIView):
             )
         )
 
-        user_msg, ai_msg = (
+        user_msg, ai_messages = (
             PrivateChatService.send_message(
                 room,
                 content
@@ -143,8 +143,14 @@ class SendPrivateMessageView(APIView):
                     user_msg
                 ).data,
 
+            "ai_messages":
+                PrivateMessageSerializer(
+                    ai_messages,
+                    many=True
+                ).data,
+
             "ai_message":
                 PrivateMessageSerializer(
-                    ai_msg
-                ).data
+                    ai_messages[0]
+                ).data if ai_messages else None
         })

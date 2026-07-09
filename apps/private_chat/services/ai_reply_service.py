@@ -1,8 +1,8 @@
-from apps.dialogue.services.dialogue_engine import generate_message
+from apps.dialogue.services.dialogue_engine import generate_private_messages
 from apps.private_chat.models import PrivateMessage
 
 
-def generate_ai_reply(room):
+def generate_ai_replies(room):
     messages = PrivateMessage.objects.filter(
         room=room
     ).order_by("id")
@@ -16,10 +16,7 @@ def generate_ai_reply(room):
             "content": msg.content,
         })
 
-    content = generate_message(
+    return generate_private_messages(
         role=persona_token,
         history=history,
-        is_private=True,
     )
-
-    return content

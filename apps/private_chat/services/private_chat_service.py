@@ -5,7 +5,7 @@ from apps.private_chat.models import (
     PrivateChatRoom,
     PrivateMessage,
 )
-from apps.private_chat.services.ai_reply_service import generate_ai_reply
+from apps.private_chat.services.ai_reply_service import generate_ai_replies
 
 
 class PrivateChatService:
@@ -50,12 +50,16 @@ class PrivateChatService:
             content=content,
         )
 
-        ai_reply = generate_ai_reply(room)
+        ai_replies = generate_ai_replies(room)
 
-        ai_msg = PrivateMessage.objects.create(
-            room=room,
-            sender_type="ai",
-            content=ai_reply,
-        )
+        ai_messages = [
+            PrivateMessage.objects.create(
+                room=room,
+                sender_type="ai",
+                content=reply,
+            )
+            for reply in ai_replies[:4]
+            if reply
+        ]
 
-        return user_msg, ai_msg
+        return user_msg, ai_messages
