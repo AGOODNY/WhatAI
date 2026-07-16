@@ -1,8 +1,9 @@
 from .models import Persona
+from .personas import get_persona
 
 
 def build_persona_dict(persona):
-    return {
+    result = {
         "id": persona.id,
         "name": str(persona.id),
         "display_name": persona.name,
@@ -18,7 +19,31 @@ def build_persona_dict(persona):
         },
         "personality_prompt": persona.personality_prompt,
         "legacy_role": persona.legacy_role,
+        "style": "",
+        "thinking_style": [],
+        "group_behavior": [],
+        "private_behavior": [],
+        "relationships": {},
+        "examples": [],
+        "avoid": [],
+        "activity_weight": 1.0,
+        "reply_affinity": {},
     }
+
+    if persona.is_builtin and persona.legacy_role:
+        profile = get_persona(persona.legacy_role)
+        if profile:
+            result.update(profile)
+            result.update({
+                "id": persona.id,
+                "name": str(persona.id),
+                "display_name": persona.name,
+                "avatar": persona.avatar_url,
+                "legacy_role": persona.legacy_role,
+                "personality_prompt": persona.personality_prompt,
+            })
+
+    return result
 
 
 def get_persona_by_token(token):

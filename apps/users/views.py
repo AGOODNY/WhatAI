@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from rest_framework import status
 
 from rest_framework_simplejwt.tokens import RefreshToken
+from config.llm_models import is_supported_llm_model
 
 from .serializers import (
     RegisterSerializer,
@@ -72,12 +73,21 @@ class UpdateProfileView(APIView):
         profile = request.user.profile
 
         nickname = request.data.get("nickname")
+        llm_model = request.data.get("llm_model")
 
         if nickname:
             profile.nickname = nickname
 
         if "avatar" in request.FILES:
             profile.avatar = request.FILES["avatar"]
+
+        if llm_model is not None:
+            if not is_supported_llm_model(llm_model):
+                return Response(
+                    {"llm_model": "unsupported model"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            profile.llm_model = llm_model
 
         profile.save()
 

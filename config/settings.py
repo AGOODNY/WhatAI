@@ -2,6 +2,7 @@ import sys
 from dotenv import load_dotenv
 from pathlib import Path
 from datetime import timedelta
+from .llm_models import DEFAULT_LLM_MODEL
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
@@ -96,7 +97,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # CORS 配置：允许所有跨域请求（仅用于开发环境）
 CORS_ALLOW_ALL_ORIGINS = True
 
-LLM_MODEL = "deepseek-v3.2"
+LLM_MODEL = DEFAULT_LLM_MODEL
 
 # JWT 认证配置
 REST_FRAMEWORK = {

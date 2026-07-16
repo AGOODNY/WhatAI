@@ -1,5 +1,6 @@
 from apps.dialogue.services.dialogue_engine import generate_private_messages
 from apps.private_chat.models import PrivateMessage
+from apps.users.services.model_selection import get_user_llm_model
 
 
 def generate_ai_replies(room):
@@ -12,6 +13,7 @@ def generate_ai_replies(room):
 
     for msg in messages:
         history.append({
+            "id": msg.id,
             "role": "USER" if msg.sender_type == "user" else persona_token,
             "content": msg.content,
         })
@@ -19,4 +21,6 @@ def generate_ai_replies(room):
     return generate_private_messages(
         role=persona_token,
         history=history,
+        room_id=room.id,
+        model=get_user_llm_model(room.user),
     )

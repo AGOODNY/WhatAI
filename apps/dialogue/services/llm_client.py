@@ -2,6 +2,7 @@ import os
 import dashscope
 from dashscope import Generation
 from django.conf import settings
+from config.llm_models import DEFAULT_LLM_MODEL, normalize_llm_model
 
 
 class LLMClient:
@@ -15,24 +16,32 @@ class LLMClient:
             dashscope.api_key = self.api_key
 
         # 主模型
-        self.model = getattr(settings, "LLM_MODEL", "qwen-turbo")
-
-        # fallback 模型
-        self.fallback_model = "qwen-turbo"
+        self.model = normalize_llm_model(
+            getattr(settings, "LLM_MODEL", DEFAULT_LLM_MODEL)
+        )
 
         print(f"[LLM] Current model: {self.model}")
 
-    def generate(self, prompt: str) -> str:
+    def generate(
+        self,
+        prompt: str,
+        *,
+        max_tokens: int = 80,
+        temperature: float = 0.7,
+        model: str = None,
+    ) -> str:
 
         if not self.api_key:
             return "（未配置千问API）"
+
+        selected_model = normalize_llm_model(model or self.model)
 
         def call_model(model_name):
             return Generation.call(
                 model=model_name,
                 prompt=prompt,
-                max_tokens=50,
-                temperature=0.7
+                max_tokens=max_tokens,
+                temperature=temperature,
             )
 
         def extract_text(response):
@@ -55,46 +64,21 @@ class LLMClient:
 
         try:
             # 1️⃣ 主模型
-            response = call_model(self.model)
+            response = call_model(selected_model)
 
             if response.status_code == 200:
                 text = extract_text(response)
                 if text:
                     return text
                 else:
-                    print(f"[LLM WARNING] {self.model} 返回为空")
+                    print(f"[LLM WARNING] {selected_model} 返回为空")
 
             else:
-                print(f"[LLM ERROR - {self.model}]", response)
+                print(f"[LLM ERROR - {selected_model}]", response)
 
-            # 2️⃣ fallback
-            print("[LLM] 尝试 fallback -> qwen-turbo")
-
-            response = call_model(self.fallback_model)
-
-            if response.status_code == 200:
-                text = extract_text(response)
-                if text:
-                    return text
-
-            print("[LLM ERROR - fallback]", response)
+            # 用户选择的模型必须被严格遵守，不静默切换到其他模型。
             return "（模型调用失败）"
 
         except Exception as e:
             print("[LLM EXCEPTION]", e)
-
-            # 3️⃣ fallback（异常）
-            try:
-                print("[LLM] 异常 fallback -> qwen-turbo")
-
-                response = call_model(self.fallback_model)
-
-                if response.status_code == 200:
-                    text = extract_text(response)
-                    if text:
-                        return text
-
-            except Exception as e2:
-                print("[LLM FALLBACK EXCEPTION]", e2)
-
             return "（调用异常）"

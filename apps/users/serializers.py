@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 
 from .models import UserProfile
+from config.llm_models import AVAILABLE_LLM_MODELS
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -46,6 +47,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     )
 
     avatar_url = serializers.SerializerMethodField()
+    available_llm_models = serializers.SerializerMethodField()
 
     class Meta:
         model = UserProfile
@@ -53,7 +55,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = [
             "username",
             "nickname",
-            "avatar_url"
+            "avatar_url",
+            "llm_model",
+            "available_llm_models",
         ]
 
     def get_avatar_url(self, obj):
@@ -67,3 +71,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
             )
 
         return None
+
+    def get_available_llm_models(self, obj):
+        return list(AVAILABLE_LLM_MODELS)

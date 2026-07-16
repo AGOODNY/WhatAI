@@ -1,5 +1,6 @@
 from apps.chat.models import Message, ChatRoom
 from django.db import IntegrityError
+from django.db import transaction
 
 
 class MessageService:
@@ -38,3 +39,27 @@ class MessageService:
         except IntegrityError:
             # 防止并发删除导致崩溃
             return None
+
+    @staticmethod
+    def create_messages(room_id, role, contents, persona=None):
+        contents = [content for content in contents if content]
+        if not contents:
+            return []
+
+        try:
+            with transaction.atomic():
+                room = ChatRoom.objects.filter(id=room_id).first()
+                if not room:
+                    return []
+
+                return [
+                    Message.objects.create(
+                        room=room,
+                        role=role,
+                        persona=persona,
+                        content=content,
+                    )
+                    for content in contents
+                ]
+        except IntegrityError:
+            return []
