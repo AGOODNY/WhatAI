@@ -9,6 +9,12 @@ import ProfileView from "../views/ProfileView.vue"
 import PrivateChatView from "../views/PrivateChatView.vue"
 import CreateChatView from "../views/CreateChatView.vue"
 import PersonaLibraryView from "../views/PersonaLibraryView.vue"
+import axios from "../api/axios"
+import {
+    getActiveToken,
+    isTokenVerified,
+    markTokenVerified
+} from "../auth"
 
 const routes = [
     {
@@ -67,9 +73,9 @@ const router = createRouter({
 /**
  * 路由守卫
  */
-router.beforeEach((to, from, next) => {
+router.beforeEach(async to => {
 
-    const token = localStorage.getItem("token")
+    const token = getActiveToken()
 
     // 不需要登录的页面
     const publicPages = [
@@ -82,19 +88,34 @@ router.beforeEach((to, from, next) => {
 
     // 未登录
     if (!token && !isPublic) {
-
-        next("/login")
-        return
+        return {
+            path: "/login",
+            query: { redirect: to.fullPath }
+        }
     }
 
     // 已登录还访问 login
     if (token && to.path === "/login") {
-
-        next("/group")
-        return
+        return "/group"
     }
 
-    next()
+    if (token && !isPublic && !isTokenVerified(token)) {
+        try {
+            await axios.get("/api/users/me/")
+            markTokenVerified(token)
+        } catch (error) {
+            if (error.response?.status === 401) {
+                return {
+                    path: "/login",
+                    query: { redirect: to.fullPath }
+                }
+            }
+
+            // 鉴权服务暂时不可用时不误删仍在有效期内的登录态。
+        }
+    }
+
+    return true
 })
 
 export default router

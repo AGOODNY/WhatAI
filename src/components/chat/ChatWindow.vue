@@ -36,6 +36,7 @@ const isAtBottom = ref(true)
 const lastId = ref(null)
 
 let timer = null
+let isFetchingNew = false
 
 function checkIfAtBottom() {
     const el = chatContentRef.value
@@ -103,12 +104,18 @@ async function fetchMessages() {
 }
 
 async function fetchNewMessages() {
-    if (!props.roomId || lastId.value === null) return
+    if (!props.roomId || isFetchingNew) return
+
+    const requestedRoomId = props.roomId
+    const requestUrl = lastId.value === null
+        ? `/api/chat/rooms/${requestedRoomId}/messages/`
+        : `/api/chat/rooms/${requestedRoomId}/messages/?last_id=${lastId.value}`
+    isFetchingNew = true
 
     try {
-        const res = await axios.get(
-            `/api/chat/rooms/${props.roomId}/messages/?last_id=${lastId.value}`
-        )
+        const res = await axios.get(requestUrl)
+
+        if (requestedRoomId !== props.roomId) return
 
         const newMsgs = res.data || []
 
@@ -118,15 +125,31 @@ async function fetchNewMessages() {
         }
 
         if (newMsgs.length > 0) {
-            messages.value.push(...newMsgs)
             lastId.value = newMsgs[newMsgs.length - 1].id
 
-            scrollToBottom()
+            for (let i = 0; i < newMsgs.length; i++) {
+                if (requestedRoomId !== props.roomId) return
+
+                messages.value.push(newMsgs[i])
+                await scrollToBottom()
+
+                if (i < newMsgs.length - 1) {
+                    await wait(350 + Math.floor(Math.random() * 551))
+                }
+            }
         }
 
     } catch (err) {
         console.error("获取新消息失败:", err)
+    } finally {
+        isFetchingNew = false
     }
+}
+
+function wait(ms) {
+    return new Promise(resolve => {
+        setTimeout(resolve, ms)
+    })
 }
 
 function startPolling() {

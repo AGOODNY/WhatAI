@@ -1,4 +1,5 @@
 import { defineStore } from "pinia"
+import { clearToken } from "../auth"
 
 export const useUserStore = defineStore("user", {
 
@@ -13,7 +14,7 @@ export const useUserStore = defineStore("user", {
         },
 
         logout() {
-            localStorage.removeItem("token")
+            clearToken()
             this.user = null
         }
     }

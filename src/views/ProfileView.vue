@@ -36,6 +36,30 @@
                         placeholder="给自己起个昵称"
                     />
                 </label>
+
+                <div class="info-item model-item">
+                    <span>聊天模型</span>
+                    <p class="model-help">
+                        保存后同时应用于群聊、私聊和对话摘要
+                    </p>
+
+                    <div class="model-options">
+                        <label
+                            v-for="model in availableModels"
+                            :key="model"
+                            class="model-option"
+                            :class="{ selected: llmModel === model }"
+                        >
+                            <input
+                                v-model="llmModel"
+                                type="radio"
+                                name="llm-model"
+                                :value="model"
+                            />
+                            <span>{{ model }}</span>
+                        </label>
+                    </div>
+                </div>
             </div>
 
             <button class="save-btn" @click="save">
@@ -54,6 +78,12 @@ const nickname = ref("nickname")
 const avatar = ref(null)
 const avatarPreview = ref("/avatars/default.jpg")
 const fileInput = ref(null)
+const llmModel = ref("deepseek-v3.2")
+const availableModels = ref([
+    "deepseek-v4-flash",
+    "deepseek-v3.2",
+    "deepseek-v4-pro",
+])
 
 async function fetchProfile() {
     try {
@@ -62,6 +92,11 @@ async function fetchProfile() {
         username.value = res.data.username
         nickname.value = res.data.nickname || "nickname"
         avatarPreview.value = res.data.avatar_url || "/avatars/default.jpg"
+        llmModel.value = res.data.llm_model || "deepseek-v3.2"
+
+        if (Array.isArray(res.data.available_llm_models)) {
+            availableModels.value = res.data.available_llm_models
+        }
     } catch (err) {
         console.error("获取用户信息失败", err)
     }
@@ -83,6 +118,7 @@ async function save() {
     const formData = new FormData()
 
     formData.append("nickname", nickname.value)
+    formData.append("llm_model", llmModel.value)
 
     if (avatar.value) {
         formData.append("avatar", avatar.value)
@@ -102,6 +138,8 @@ async function save() {
         if (res.data.avatar_url) {
             avatarPreview.value = res.data.avatar_url
         }
+
+        llmModel.value = res.data.llm_model || llmModel.value
 
         alert("保存成功")
     } catch (err) {
@@ -201,6 +239,59 @@ onMounted(fetchProfile)
 
 .info-item span {
     color: #6f625a;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.model-item {
+    padding-top: 4px;
+}
+
+.model-help {
+    margin: -2px 0 2px;
+    color: var(--color-muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.model-options {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+}
+
+.model-option {
+    min-height: 44px;
+    padding: 10px 13px;
+    border: 1px solid rgba(249, 140, 83, 0.2);
+    border-radius: 14px;
+    background: rgba(249, 242, 239, 0.62);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition:
+        border-color 0.2s ease,
+        background-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.model-option:hover,
+.model-option.selected {
+    border-color: rgba(249, 140, 83, 0.52);
+    background: rgba(252, 206, 180, 0.28);
+    box-shadow: 0 8px 20px rgba(249, 140, 83, 0.1);
+}
+
+.model-option input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: var(--color-primary);
+}
+
+.model-option span {
+    color: #51443c;
     font-size: 13px;
     font-weight: 800;
 }

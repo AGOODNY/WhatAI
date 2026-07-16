@@ -46,11 +46,13 @@
 
 <script setup>
 import { ref } from "vue"
-import { useRouter } from "vue-router"
+import { useRoute, useRouter } from "vue-router"
 
 import axios from "@/api/axios"
+import { setToken } from "@/auth"
 
 const router = useRouter()
+const route = useRoute()
 
 const username = ref("")
 const password = ref("")
@@ -67,12 +69,16 @@ async function login() {
             }
         )
 
-        localStorage.setItem(
-            "token",
-            res.data.access
-        )
+        setToken(res.data.access)
 
-        router.push("/")
+        const requestedRedirect = route.query.redirect
+        const redirect = typeof requestedRedirect === "string"
+            && requestedRedirect.startsWith("/")
+            && !requestedRedirect.startsWith("//")
+                ? requestedRedirect
+                : "/"
+
+        router.replace(redirect)
 
     } catch (err) {
 
