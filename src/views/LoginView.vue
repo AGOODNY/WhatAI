@@ -4,7 +4,7 @@
             <section class="login-intro">
                 <div class="brand-mark">CS</div>
                 <h1>欢迎回来</h1>
-                <p>登录 ChatSim，继续你的群聊模拟与角色对话。</p>
+                <p>登录 WhatAI，继续你的群聊模拟与角色对话。</p>
             </section>
 
             <form class="login-box" @submit.prevent="login">

@@ -21,8 +21,8 @@
                     <h1>{{ stage === "catalog" ? "和 AI 玩点什么？" : "选择你的对手" }}</h1>
                     <p class="subtitle">
                         {{ stage === "catalog"
-                            ? "在轻松对局里继续聊天，看看熟悉的人格会有怎样的棋风。"
-                            : "选择一个已有 AI 人格开始五子棋，本页不会创建新人格。"
+                            ? "什么？你说你没有朋友？你的朋友来力！"
+                            : "选择一个已有 AI 人格开始五子棋。"
                         }}
                     </p>
                 </div>
@@ -94,21 +94,21 @@ const games = [
         id: "gomoku",
         name: "五子棋",
         symbol: "● ○",
-        description: "执黑先行，在交谈之间连成五子。",
+        description: "谁能拒绝和AI来一场酣畅淋漓的五子棋",
         available: true,
     },
     {
         id: "idiom",
         name: "成语接龙",
         symbol: "成",
-        description: "一词接一词，考验词汇与临场反应。",
+        description: "你确定要和大语言模型玩这个？（意味深）",
         available: false,
     },
     {
         id: "poetry",
         name: "飞花令",
         symbol: "花",
-        description: "以诗会友，在限定字中来回唱和。",
+        description: "你还确定要和大语言模型玩这个？（意味深）",
         available: false,
     },
 ]
