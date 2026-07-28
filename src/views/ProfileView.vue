@@ -78,10 +78,9 @@ const nickname = ref("nickname")
 const avatar = ref(null)
 const avatarPreview = ref("/avatars/default.jpg")
 const fileInput = ref(null)
-const llmModel = ref("deepseek-v3.2")
+const llmModel = ref("deepseek-v4-flash")
 const availableModels = ref([
     "deepseek-v4-flash",
-    "deepseek-v3.2",
     "deepseek-v4-pro",
 ])
 
@@ -92,7 +91,7 @@ async function fetchProfile() {
         username.value = res.data.username
         nickname.value = res.data.nickname || "nickname"
         avatarPreview.value = res.data.avatar_url || "/avatars/default.jpg"
-        llmModel.value = res.data.llm_model || "deepseek-v3.2"
+        llmModel.value = res.data.llm_model || "deepseek-v4-flash"
 
         if (Array.isArray(res.data.available_llm_models)) {
             availableModels.value = res.data.available_llm_models

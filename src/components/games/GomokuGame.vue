@@ -259,7 +259,12 @@ async function requestAi({ action, message }) {
             }
         }
 
-        addMessage("ai", response.data.reply || "我在看着棋盘，你继续吧。")
+        const reply = typeof response.data.reply === "string"
+            ? response.data.reply.trim()
+            : ""
+        if (reply) {
+            addMessage("ai", reply)
+        }
         return true
     } catch (error) {
         console.error(error)
