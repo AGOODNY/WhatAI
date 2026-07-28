@@ -1,8 +1,7 @@
-DEFAULT_LLM_MODEL = "deepseek-v3.2"
+DEFAULT_LLM_MODEL = "deepseek-v4-flash"
 
 AVAILABLE_LLM_MODELS = (
     "deepseek-v4-flash",
-    "deepseek-v3.2",
     "deepseek-v4-pro",
 )
 

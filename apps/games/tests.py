@@ -57,8 +57,11 @@ class GomokuApiTests(APITestCase):
         )
         self.client.force_authenticate(self.user)
 
-    @patch("apps.games.services.LLMClient.generate", return_value="这一步我先守住中腹。")
-    def test_move_response_contains_legal_ai_move_and_reply(self, _generate):
+    @patch(
+        "apps.games.services.LLMClient.generate",
+        return_value='{"speak": true, "content": "这步有点意思。"}',
+    )
+    def test_move_response_contains_legal_ai_move_and_reply(self, generate):
         board = [[0 for _ in range(15)] for _ in range(15)]
         board[7][7] = 1
 
@@ -75,10 +78,37 @@ class GomokuApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["reply"], "这一步我先守住中腹。")
+        self.assertEqual(response.data["reply"], "这步有点意思。")
         move = response.data["ai_move"]
         self.assertIsNotNone(move)
         self.assertEqual(board[move["row"]][move["col"]], 0)
+        prompt = generate.call_args.args[0]
+        self.assertIn("你正在和用户进行一对一私聊", prompt)
+        self.assertIn("不要每步都点评", prompt)
+
+    @patch(
+        "apps.games.services.LLMClient.generate",
+        return_value='{"speak": false, "content": ""}',
+    )
+    def test_ordinary_move_can_stay_silent(self, _generate):
+        board = [[0 for _ in range(15)] for _ in range(15)]
+        board[7][7] = 1
+
+        response = self.client.post(
+            "/api/games/gomoku/respond/",
+            {
+                "persona_id": self.persona.id,
+                "board": board,
+                "history": [],
+                "message": "用户刚刚落在 H8。",
+                "action": "move",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["reply"], "")
+        self.assertIsNotNone(response.data["ai_move"])
 
     def test_hidden_persona_cannot_be_used(self):
         private_persona = Persona.objects.create(

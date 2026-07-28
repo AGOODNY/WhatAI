@@ -25,7 +25,7 @@ class ModelPreferenceApiTests(TestCase):
         response = self.client.get("/api/users/me/")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["llm_model"], "deepseek-v3.2")
+        self.assertEqual(response.data["llm_model"], "deepseek-v4-flash")
         self.assertEqual(response.data["available_llm_models"], list(AVAILABLE_LLM_MODELS))
 
     def test_profile_can_switch_model(self):
@@ -49,7 +49,7 @@ class ModelPreferenceApiTests(TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.user.profile.refresh_from_db()
-        self.assertEqual(self.user.profile.llm_model, "deepseek-v3.2")
+        self.assertEqual(self.user.profile.llm_model, "deepseek-v4-flash")
 
 
 class ModelSelectionPropagationTests(TestCase):
@@ -106,31 +106,61 @@ class ModelSelectionPropagationTests(TestCase):
 
 
 class LLMClientModelTests(TestCase):
-    @patch("apps.dialogue.services.llm_client.Generation.call")
-    def test_selected_model_is_sent_to_dashscope(self, call):
-        call.return_value = SimpleNamespace(
-            status_code=200,
-            output=SimpleNamespace(text="ok"),
+    @patch("apps.dialogue.services.llm_client.OpenAI")
+    def test_selected_model_is_sent_to_deepseek(self, openai):
+        create = openai.return_value.chat.completions.create
+        create.return_value = SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(content="ok"),
+                )
+            ],
         )
-        client = LLMClient()
-        client.api_key = "test-key"
+        client = LLMClient(api_key="test-key")
 
         result = client.generate("hello", model="deepseek-v4-pro")
 
         self.assertEqual(result, "ok")
-        self.assertEqual(call.call_args.kwargs["model"], "deepseek-v4-pro")
-
-    @patch("apps.dialogue.services.llm_client.Generation.call")
-    def test_failed_selected_model_does_not_silently_switch(self, call):
-        call.return_value = SimpleNamespace(
-            status_code=500,
-            output=SimpleNamespace(text=None),
+        self.assertEqual(create.call_args.kwargs["model"], "deepseek-v4-pro")
+        self.assertEqual(
+            create.call_args.kwargs["extra_body"],
+            {"thinking": {"type": "disabled"}},
         )
-        client = LLMClient()
-        client.api_key = "test-key"
+        self.assertEqual(
+            create.call_args.kwargs["messages"][0]["role"],
+            "system",
+        )
+        self.assertIn(
+            "禁止输出动作",
+            create.call_args.kwargs["messages"][0]["content"],
+        )
+
+    @patch("apps.dialogue.services.llm_client.OpenAI")
+    def test_action_descriptions_are_removed_from_all_outputs(self, openai):
+        create = openai.return_value.chat.completions.create
+        create.return_value = SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(
+                        content="（笑了一下）你好 *挥手*",
+                    ),
+                )
+            ],
+        )
+        client = LLMClient(api_key="test-key")
 
         result = client.generate("hello", model="deepseek-v4-flash")
 
-        self.assertEqual(result, "（模型调用失败）")
-        self.assertEqual(call.call_count, 1)
-        self.assertEqual(call.call_args.kwargs["model"], "deepseek-v4-flash")
+        self.assertEqual(result, "你好")
+
+    @patch("apps.dialogue.services.llm_client.OpenAI")
+    def test_failed_selected_model_does_not_silently_switch(self, openai):
+        create = openai.return_value.chat.completions.create
+        create.side_effect = RuntimeError("request failed")
+        client = LLMClient(api_key="test-key")
+
+        result = client.generate("hello", model="deepseek-v4-flash")
+
+        self.assertEqual(result, "（模型调用失败：deepseek-v4-flash）")
+        self.assertEqual(create.call_count, 1)
+        self.assertEqual(create.call_args.kwargs["model"], "deepseek-v4-flash")

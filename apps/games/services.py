@@ -1,6 +1,9 @@
+import json
+import re
 from collections import defaultdict
 
 from apps.dialogue.services.llm_client import LLMClient
+from apps.dialogue.services.private_prompt_builder import build_private_prompt
 from apps.users.services.model_selection import get_user_llm_model
 
 
@@ -142,66 +145,105 @@ def _board_summary(board):
     )
 
 
-def _fallback_reply(persona, action, ai_move, ai_won):
-    name = persona.name
+def _private_history(persona, history):
+    persona_token = str(persona.id)
+    result = []
+    for item in history[-20:] if isinstance(history, list) else []:
+        if not isinstance(item, dict):
+            continue
+        result.append({
+            "role": "USER" if item.get("role") == "user" else persona_token,
+            "content": str(item.get("content", ""))[:500],
+        })
+    return result
+
+
+def _extract_json_object(text):
+    text = (text or "").strip()
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        match = re.search(r"\{[\s\S]*\}", text)
+        if not match:
+            return None
+        try:
+            data = json.loads(match.group(0))
+        except json.JSONDecodeError:
+            return None
+    return data if isinstance(data, dict) else None
+
+
+def _fallback_reply(action, ai_won, user_won):
     if ai_won:
-        return f"五子连珠。承让啦，这一局是我赢了。要不要和{name}再来一盘？"
-    if action == "move" and ai_move:
-        coordinate = f"{chr(65 + ai_move['col'])}{ai_move['row'] + 1}"
-        return f"我落在 {coordinate}。这一步我既要顾着自己的连线，也得提防你的攻势。"
-    return "我一直看着棋盘呢。你可以聊聊你的思路，也可以继续落子。"
+        return "五子连上了，这局我赢。"
+    if user_won:
+        return "这局是你赢。"
+    if action == "move":
+        return ""
+    return "刚才没能接上，再说一次？"
 
 
 def generate_game_reply(*, persona, user, board, history, message, action, ai_move):
     ai_won = has_five(board, 2)
     user_won = has_five(board, 1)
-    recent_history = history[-10:] if isinstance(history, list) else []
-    history_text = "\n".join(
-        f"{'用户' if item.get('role') == 'user' else persona.name}："
-        f"{str(item.get('content', ''))[:300]}"
-        for item in recent_history
-        if isinstance(item, dict)
-    ) or "暂无聊天"
     move_text = (
         f"{chr(65 + ai_move['col'])}{ai_move['row'] + 1}"
         if ai_move else "本轮没有落子"
     )
+    game_context = f"""
+你和用户正在一边私聊一边下五子棋。用户执黑棋，你执白棋，棋盘坐标列为 A-O、行为 1-15。
 
-    prompt = f"""
-你正在以“{persona.name}”的身份和用户一边聊天一边下五子棋。
-
-【人格设定】
-简介：{persona.description or '自然、友好'}
-说话风格：{persona.speaking_style or '自然口语'}
-补充设定：{persona.personality_prompt or '无'}
-
-【规则与当前状态】
-用户执黑棋（1），你执白棋（2），棋盘坐标列为 A-O、行为 1-15。
+【当前棋盘】
 {_board_summary(board)}
 你刚才的落子：{move_text}
 你是否已经获胜：{'是' if ai_won else '否'}
 用户是否已经获胜：{'是' if user_won else '否'}
+本轮事件：{message or '用户刚刚落了一枚棋子，没有额外发言。'}
 
-【最近聊天】
-{history_text}
-
-【用户最新内容】
-{message or '用户刚刚落了一枚棋子，没有额外发言。'}
-
-请用符合人格的中文回复 1-3 句。你必须理解并可以评论当前棋局，但不要虚构棋盘上没有的棋子，
-不要输出程序格式、坐标指令或下一步落子；落子已经由规则引擎完成。聊天要自然，可以回应用户，
-也可以简短点评刚才的攻防。如果你已获胜，可以自然地庆祝；如果用户获胜，应大方承认结果。
-不要声称自己获胜，除非上面明确为“是”。
+棋局信息只是当前私聊情境的一部分。理解局面后仍要像私聊时一样自然说话，不要像棋谱解说员，
+不要机械复述坐标，不要每步都点评，也不要使用“我在看着棋盘”“攻守兼备”之类模板句。
 """.strip()
 
+    if action == "move":
+        output_contract = """
+先判断这一手之后是否真的值得开口。普通布局、没有明显转折时应保持沉默。
+只有出现明显威胁或化解、精彩或意外的一手、局势转折、胜负已定，或按当前人格确实很自然地想说一句时才开口。
+不要为了证明自己理解棋局而发言；多数普通回合应选择不说。
+只输出合法 JSON 对象，不要输出其他内容：
+{"speak": false, "content": ""}
+或
+{"speak": true, "content": "一句符合私聊人格的自然短回复"}
+如果任一方已经获胜，speak 必须为 true。
+"""
+    else:
+        output_contract = """
+用户正在主动和你说话。正常回应用户，只输出一句自然聊天内容，不要使用 JSON，不要解释。
+"""
+
+    prompt = build_private_prompt(
+        str(persona.id),
+        _private_history(persona, history),
+        extra_context=game_context,
+        output_contract=output_contract,
+    )
     reply = LLMClient().generate(
         prompt,
-        max_tokens=160,
-        temperature=0.75,
+        max_tokens=140,
+        temperature=0.76,
         model=get_user_llm_model(user),
     )
+
     if not reply or reply.startswith(("（", "锛")):
-        if user_won:
-            return f"这一手漂亮，确实已经连成五子了。是你赢了，{persona.name}认输！"
-        return _fallback_reply(persona, action, ai_move, ai_won)
-    return reply
+        return _fallback_reply(action, ai_won, user_won)
+
+    if action != "move":
+        return reply
+
+    decision = _extract_json_object(reply)
+    if not decision or decision.get("speak") is not True:
+        return _fallback_reply(action, ai_won, user_won)
+
+    content = decision.get("content")
+    if not isinstance(content, str) or not content.strip():
+        return _fallback_reply(action, ai_won, user_won)
+    return content.strip()
