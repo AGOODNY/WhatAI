@@ -110,6 +110,37 @@ class GomokuApiTests(APITestCase):
         self.assertEqual(response.data["reply"], "")
         self.assertIsNotNone(response.data["ai_move"])
 
+    @patch(
+        "apps.games.services.LLMClient.generate",
+        return_value="先不告诉你。",
+    )
+    def test_chat_prompt_keeps_future_move_secret(self, generate):
+        board = [[0 for _ in range(15)] for _ in range(15)]
+
+        response = self.client.post(
+            "/api/games/gomoku/respond/",
+            {
+                "persona_id": self.persona.id,
+                "board": board,
+                "history": [
+                    {
+                        "role": "user",
+                        "content": "你下一步打算下在哪里？",
+                    }
+                ],
+                "message": "你下一步打算下在哪里？",
+                "action": "chat",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["reply"], "先不告诉你。")
+        prompt = generate.call_args.args[0]
+        self.assertIn("落子计划保密规则", prompt)
+        self.assertIn("绝对不要透露尚未落下的棋", prompt)
+        self.assertIn("即使用户换一种问法", prompt)
+
     def test_hidden_persona_cannot_be_used(self):
         private_persona = Persona.objects.create(
             name="别人的人格",
