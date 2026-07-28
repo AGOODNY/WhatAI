@@ -21,6 +21,8 @@ class ChatRoom(models.Model):
 
     started_at = models.DateTimeField(null=True, blank=True)
 
+    user_participates = models.BooleanField(default=False)
+
     personas = models.ManyToManyField(
         "personas.Persona",
         related_name="chat_rooms",
@@ -48,6 +50,13 @@ class Message(models.Model):
         related_name="messages",
         blank=True,
         null=True
+    )
+    reply_to = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        related_name="replies",
+        blank=True,
+        null=True,
     )
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)

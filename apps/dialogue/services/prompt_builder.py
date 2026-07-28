@@ -46,7 +46,15 @@ def _format_history(history):
         if msg.get("role") == "system":
             lines.append(f"[之前话题摘要] {msg.get('content', '')}")
             continue
-        lines.append(f"{_speaker_name(msg)}：{msg.get('content', '')}")
+        quote_text = ""
+        if msg.get("reply_to_id"):
+            quote_text = (
+                f" [引用 {msg.get('reply_to_speaker', '群成员')}："
+                f"{msg.get('reply_to_content', '')}]"
+            )
+        lines.append(
+            f"{_speaker_name(msg)}{quote_text}：{msg.get('content', '')}"
+        )
     return "\n".join(lines) if lines else "暂无历史消息"
 
 

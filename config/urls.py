@@ -25,6 +25,7 @@ urlpatterns = [
     path("api/personas/", include("apps.personas.urls")),
     path("api/users/", include("apps.users.urls")),
     path("api/private-chat/",include("apps.private_chat.urls")),
+    path("api/games/", include("apps.games.urls")),
 ]
 
 urlpatterns += static(

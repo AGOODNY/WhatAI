@@ -98,6 +98,25 @@ class SchedulerTests(TestCase):
         )
         self.assertGreater(mentioned[str(pigeon.id)], plain[str(pigeon.id)] * 2)
 
+    def test_quoting_an_ai_strongly_boosts_that_persona(self):
+        pigeon = next(item for item in self.personas if item.legacy_role == "D")
+        plain = self._captured_weights(
+            [{"role": "user", "content": "我接着说"}],
+            str(pigeon.id),
+        )
+        quoted = self._captured_weights(
+            [{
+                "role": "user",
+                "content": "我接着说",
+                "reply_to_role": str(pigeon.id),
+            }],
+            str(pigeon.id),
+        )
+        self.assertGreater(
+            quoted[str(pigeon.id)],
+            plain[str(pigeon.id)] * 6,
+        )
+
     def test_energy_uses_questions_and_recent_activity(self):
         now = timezone.now()
         history = [

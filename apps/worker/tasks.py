@@ -12,21 +12,52 @@ from apps.users.services.model_selection import get_user_llm_model
 
 
 def _message_to_history_item(message):
-    speaker = message.persona.name if message.persona else str(message.role)
-    return {
+    if message.persona:
+        speaker = message.persona.name
+    elif message.role == "user":
+        profile = getattr(message.room.owner, "profile", None)
+        speaker = getattr(profile, "nickname", "") or message.room.owner.username
+    else:
+        speaker = str(message.role)
+    item = {
         "id": message.id,
         "role": str(message.persona_id or message.role),
         "speaker": speaker,
         "content": message.content,
         "timestamp": message.timestamp,
     }
+    if message.reply_to:
+        quoted = message.reply_to
+        if quoted.persona:
+            quoted_speaker = quoted.persona.name
+        elif quoted.role == "user":
+            profile = getattr(quoted.room.owner, "profile", None)
+            quoted_speaker = (
+                getattr(profile, "nickname", "")
+                or quoted.room.owner.username
+            )
+        else:
+            quoted_speaker = str(quoted.role)
+
+        item.update({
+            "reply_to_id": quoted.id,
+            "reply_to_role": str(quoted.persona_id or quoted.role),
+            "reply_to_speaker": quoted_speaker,
+            "reply_to_content": quoted.content,
+        })
+    return item
 
 
 def get_history(room_id, limit=100):
     messages = (
         Message.objects
         .filter(room_id=room_id)
-        .select_related("persona")
+        .select_related(
+            "persona",
+            "room__owner__profile",
+            "reply_to__persona",
+            "reply_to__room__owner__profile",
+        )
         .order_by("-id")[:limit][::-1]
     )
     return [_message_to_history_item(message) for message in messages]
@@ -92,6 +123,30 @@ def _next_delay_seconds(history, emitted_count=1):
     return delay
 
 
+def _choose_ai_reply_target(history, role):
+    """Choose a concrete recent message only when the turn looks like a reply."""
+    if not history:
+        return None
+
+    last_message = history[-1]
+    if str(last_message.get("role")) == str(role):
+        return None
+
+    text = last_message.get("content", "")
+    explicitly_quoted_this_ai = (
+        str(last_message.get("reply_to_role", "")) == str(role)
+    )
+    looks_direct = any(mark in text for mark in ("?", "？", "@"))
+
+    if explicitly_quoted_this_ai or looks_direct:
+        return last_message.get("id")
+    if last_message.get("role") == "user" and random.random() < 0.72:
+        return last_message.get("id")
+    if random.random() < 0.2:
+        return last_message.get("id")
+    return None
+
+
 def run_one_step_for_room(room, last_role=None):
     history = get_history(room.id)
     personas = list(room.personas.all())
@@ -114,17 +169,36 @@ def run_one_step_for_room(room, last_role=None):
         history,
         room_id=room.id,
         scenario=room.scenario,
-        participants=personas,
+        participants=[
+            *personas,
+            *(
+                [{
+                    "name": (
+                        getattr(getattr(room.owner, "profile", None), "nickname", "")
+                        or room.owner.username
+                    ),
+                }]
+                if room.user_participates
+                else []
+            ),
+        ],
         model=get_user_llm_model(room.owner),
     )
     if not replies:
         return last_role, 0
 
+    reply_to_id = _choose_ai_reply_target(history, role)
+    reply_to = (
+        Message.objects.filter(id=reply_to_id, room=room).first()
+        if reply_to_id
+        else None
+    )
     messages = MessageService.create_messages(
         room.id,
         role,
         replies[:3],
         persona,
+        reply_to=reply_to,
     )
     if not messages:
         return last_role, 0

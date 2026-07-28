@@ -9,6 +9,10 @@ class MessageService:
     def get_messages(room_id, limit=30):
         return Message.objects.filter(
             room_id=room_id
+        ).select_related(
+            "persona",
+            "reply_to__persona",
+            "reply_to__room__owner__profile",
         ).order_by("-id")[:limit][::-1]
 
     @staticmethod
@@ -16,10 +20,14 @@ class MessageService:
         return Message.objects.filter(
             room_id=room_id,
             id__gt=last_id
+        ).select_related(
+            "persona",
+            "reply_to__persona",
+            "reply_to__room__owner__profile",
         ).order_by("id")
 
     @staticmethod
-    def create_message(room_id, role, content, persona=None):
+    def create_message(room_id, role, content, persona=None, reply_to=None):
         """
         安全创建消息（防止房间被删除）
         """
@@ -33,6 +41,7 @@ class MessageService:
                 room=room,
                 role=role,
                 persona=persona,
+                reply_to=reply_to,
                 content=content
             )
 
@@ -41,7 +50,7 @@ class MessageService:
             return None
 
     @staticmethod
-    def create_messages(room_id, role, contents, persona=None):
+    def create_messages(room_id, role, contents, persona=None, reply_to=None):
         contents = [content for content in contents if content]
         if not contents:
             return []
@@ -52,14 +61,15 @@ class MessageService:
                 if not room:
                     return []
 
-                return [
-                    Message.objects.create(
+                messages = []
+                for index, content in enumerate(contents):
+                    messages.append(Message.objects.create(
                         room=room,
                         role=role,
                         persona=persona,
+                        reply_to=reply_to if index == 0 else None,
                         content=content,
-                    )
-                    for content in contents
-                ]
+                    ))
+                return messages
         except IntegrityError:
             return []

@@ -52,13 +52,18 @@ def choose_next_speaker(
 
     last_profile = profile_by_role.get(str(last_role))
     affinities = last_profile.get("reply_affinity", {}) if last_profile else {}
+    quoted_role = (
+        str(history[-1].get("reply_to_role", ""))
+        if history
+        else ""
+    )
 
     for role in active_roles:
         recent_count = recent_roles.count(role)
         if recent_count:
             weights[role] *= max(0.28, 1.0 - recent_count * 0.17)
 
-        if role == str(last_role):
+        if role == str(last_role) and role != quoted_role:
             weights[role] *= 0.04
         elif last_profile:
             legacy_role = str(profile_by_role[role].get("legacy_role") or "")
@@ -71,5 +76,10 @@ def choose_next_speaker(
 
         if _mentioned_in_last_message(persona_by_role.get(role), history):
             weights[role] *= 2.8
+
+        # A user quoting an AI is a strong conversational signal that this
+        # persona should get the next chance to answer.
+        if role == quoted_role:
+            weights[role] *= 7.0
 
     return _random_by_weight(weights)
