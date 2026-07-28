@@ -66,7 +66,13 @@
                 <img :src="persona.avatar_url || persona.avatar || '/avatars/default.jpg'" alt="" />
                 <div>
                     <strong>{{ persona.name }}</strong>
-                    <span><i :class="{ thinking: pending }"></i>{{ pending ? "正在思考棋局…" : "在棋盘边陪你聊天" }}</span>
+                    <span>
+                        <i :class="{ thinking: pending }"></i>
+                        {{ pending
+                            ? (pendingAction === "chat" ? "正在回复你…" : "正在思考棋局…")
+                            : "在棋盘边陪你聊天"
+                        }}
+                    </span>
                 </div>
             </header>
 
@@ -87,7 +93,7 @@
                         <p>{{ message.content }}</p>
                     </div>
                 </div>
-                <div v-if="pending" class="message ai">
+                <div v-if="pending && pendingAction === 'chat'" class="message ai">
                     <img :src="persona.avatar_url || persona.avatar || '/avatars/default.jpg'" alt="" />
                     <div>
                         <span class="speaker">{{ persona.name }}</span>
@@ -127,6 +133,7 @@ const SIZE = 15
 const board = ref(createBoard())
 const messages = ref([])
 const pending = ref(false)
+const pendingAction = ref("")
 const winner = ref("")
 const lastMove = ref(null)
 const chatText = ref("")
@@ -231,6 +238,7 @@ async function sendChat() {
 }
 
 async function requestAi({ action, message }) {
+    pendingAction.value = action
     pending.value = true
     await scrollToBottom()
 
@@ -273,6 +281,7 @@ async function requestAi({ action, message }) {
         return false
     } finally {
         pending.value = false
+        pendingAction.value = ""
         await scrollToBottom()
     }
 }
@@ -324,6 +333,7 @@ function restartGame() {
     winner.value = ""
     lastMove.value = null
     pending.value = false
+    pendingAction.value = ""
     chatText.value = ""
     startConversation()
     scrollToBottom()
