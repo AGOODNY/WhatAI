@@ -9,6 +9,7 @@ import ProfileView from "../views/ProfileView.vue"
 import PrivateChatView from "../views/PrivateChatView.vue"
 import CreateChatView from "../views/CreateChatView.vue"
 import PersonaLibraryView from "../views/PersonaLibraryView.vue"
+import PlayView from "../views/PlayView.vue"
 import axios from "../api/axios"
 import {
     getActiveToken,
@@ -60,6 +61,11 @@ const routes = [
             {
                 path: "/personas",
                 component: PersonaLibraryView
+            },
+
+            {
+                path: "/play",
+                component: PlayView
             }
         ]
     }

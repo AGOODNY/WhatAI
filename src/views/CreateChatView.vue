@@ -37,10 +37,27 @@
             <div class="section-title">
                 <p>Personas</p>
                 <div class="section-title-row">
-                    <h3>选择 2-4 个人格</h3>
-                    <span class="count-pill">已选 {{ selectedIds.length }}/4</span>
+                    <h3>选择 2-4 个 AI，也可以加入自己</h3>
+                    <span class="count-pill">
+                        AI {{ selectedIds.length }}/4
+                        <template v-if="includeMe"> · 已加入我</template>
+                    </span>
                 </div>
             </div>
+
+            <button
+                type="button"
+                class="me-card"
+                :class="{ selected: includeMe }"
+                @click="includeMe = !includeMe"
+            >
+                <img :src="me.avatar_url || '/avatars/default.jpg'" class="me-avatar" />
+                <span class="me-copy">
+                    <strong>{{ me.nickname || me.username || "我" }}</strong>
+                    <small>以我自己加入群聊 · 不占 AI 名额</small>
+                </span>
+                <span class="me-check">{{ includeMe ? "已加入" : "加入我" }}</span>
+            </button>
 
             <div class="persona-grid">
                 <button
@@ -85,11 +102,18 @@ const name = ref("")
 const scenario = ref("")
 const personas = ref([])
 const selectedIds = ref([])
+const includeMe = ref(false)
+const me = ref({})
 const showCreate = ref(false)
 
 async function fetchPersonas() {
     const res = await axios.get("/api/personas/")
     personas.value = res.data
+}
+
+async function fetchMe() {
+    const res = await axios.get("/api/users/me/")
+    me.value = res.data
 }
 
 function togglePersona(persona) {
@@ -143,6 +167,7 @@ async function handleCreate() {
                 name: name.value,
                 scenario: scenario.value,
                 persona_ids: selectedIds.value,
+                user_participates: includeMe.value,
             }
         )
 
@@ -158,7 +183,11 @@ function goBack() {
     router.push("/")
 }
 
-onMounted(fetchPersonas)
+onMounted(() => {
+    Promise.all([fetchPersonas(), fetchMe()]).catch(err => {
+        console.error("加载群聊参与者失败", err)
+    })
+})
 </script>
 
 <style scoped>
@@ -332,6 +361,75 @@ textarea {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
     gap: 14px;
+}
+
+.me-card {
+    width: 100%;
+    min-height: 82px;
+    margin-bottom: 14px;
+    padding: 12px 16px;
+    border: 1px solid rgba(171, 215, 251, 0.42);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.78);
+    color: var(--color-text);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    text-align: left;
+    box-shadow: 0 10px 24px rgba(164, 109, 78, 0.07);
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.me-card:hover {
+    transform: translateY(-1px);
+    border-color: rgba(249, 140, 83, 0.45);
+}
+
+.me-card.selected {
+    border-color: rgba(249, 140, 83, 0.58);
+    background: linear-gradient(135deg, rgba(252, 206, 180, 0.72), rgba(171, 215, 251, 0.45));
+    box-shadow: 0 14px 28px rgba(249, 140, 83, 0.16);
+}
+
+.me-avatar {
+    width: 54px;
+    height: 54px;
+    flex: 0 0 54px;
+    border: 3px solid rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.me-copy {
+    min-width: 0;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.me-copy strong {
+    overflow: hidden;
+    color: #4c4038;
+    font-size: 16px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.me-copy small {
+    color: var(--color-muted);
+    font-size: 12px;
+}
+
+.me-check {
+    flex: 0 0 auto;
+    padding: 6px 11px;
+    border-radius: 999px;
+    background: rgba(171, 215, 251, 0.45);
+    color: #467399;
+    font-size: 12px;
+    font-weight: 900;
 }
 
 .persona-card {

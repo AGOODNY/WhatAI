@@ -1,5 +1,5 @@
 <template>
-    <div class="main-sidebar">
+    <nav class="main-sidebar" aria-label="主导航">
         <button
             v-for="item in navItems"
             :key="item.path"
@@ -8,9 +8,10 @@
             type="button"
             @click="go(item.path)"
         >
-            {{ item.label }}
+            <span class="nav-icon" aria-hidden="true">{{ item.icon }}</span>
+            <span>{{ item.label }}</span>
         </button>
-    </div>
+    </nav>
 </template>
 
 <script setup>
@@ -20,10 +21,11 @@ const router = useRouter()
 const route = useRoute()
 
 const navItems = [
-    { label: "群聊", path: "/group" },
-    { label: "私聊", path: "/private" },
-    { label: "人格库", path: "/personas" },
-    { label: "个人中心", path: "/profile" },
+    { label: "群聊", icon: "聊", path: "/group" },
+    { label: "私聊", icon: "私", path: "/private" },
+    { label: "人格库", icon: "人", path: "/personas" },
+    { label: "游玩", icon: "玩", path: "/play" },
+    { label: "个人中心", icon: "我", path: "/profile" },
 ]
 
 function go(path) {
@@ -34,7 +36,6 @@ function isActive(path) {
     if (path === "/group") {
         return route.path === "/" || route.path === "/group" || route.path === "/create"
     }
-
     return route.path === path || route.path.startsWith(`${path}/`)
 }
 </script>
@@ -57,21 +58,30 @@ function isActive(path) {
 }
 
 .nav-item {
-    min-height: 44px;
-    padding: 12px 14px;
+    min-height: 52px;
+    padding: 9px 10px;
     border-radius: 14px;
     background: transparent;
     cursor: pointer;
     font-size: 14px;
     font-weight: 700;
-    line-height: 1.35;
-    text-align: center;
     color: #6b5b50;
-    transition:
-        background-color 0.2s ease,
-        color 0.2s ease,
-        transform 0.2s ease,
-        box-shadow 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.nav-icon {
+    width: 25px;
+    height: 25px;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.62);
+    display: grid;
+    place-items: center;
+    font-size: 12px;
+    font-weight: 900;
 }
 
 .nav-item:hover,
@@ -99,9 +109,9 @@ function isActive(path) {
 
     .nav-item {
         flex: 1 0 max-content;
-        min-width: 72px;
-        min-height: 40px;
-        padding: 10px 12px;
+        min-width: 74px;
+        min-height: 42px;
+        padding: 8px 10px;
         white-space: nowrap;
     }
 }

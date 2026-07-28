@@ -1,5 +1,9 @@
 <template>
-    <div class="message-item">
+    <div
+        class="message-item"
+        :class="{ mine: isMine }"
+        @contextmenu="handleContextMenu"
+    >
         <img class="avatar" :src="avatarUrl" alt="avatar" />
 
         <div class="content">
@@ -8,7 +12,16 @@
             </div>
 
             <div class="bubble">
-                {{ content }}
+                <button
+                    v-if="replyTo"
+                    type="button"
+                    class="quoted-message"
+                    @click="emit('jumpToMessage', replyTo.id)"
+                >
+                    <strong>{{ replyTo.display_name }}</strong>
+                    <span>{{ replyTo.content }}</span>
+                </button>
+                <div class="message-text">{{ content }}</div>
             </div>
         </div>
     </div>
@@ -18,18 +31,32 @@
 import { computed } from "vue"
 import { PERSONA_MAP } from "../../constants/personas"
 
+const emit = defineEmits(["openQuoteMenu", "jumpToMessage"])
+
 const props = defineProps({
     role: String,
     persona: Object,
-    content: String
+    content: String,
+    isMine: Boolean,
+    user: Object,
+    replyTo: Object,
+    canQuote: Boolean,
 })
 
+function handleContextMenu(event) {
+    if (!props.canQuote) return
+    event.preventDefault()
+    emit("openQuoteMenu", event)
+}
+
 const displayName = computed(() => {
+    if (props.isMine) return props.user?.nickname || props.user?.username || "我"
     if (props.persona?.name) return props.persona.name
     return PERSONA_MAP[props.role]?.name || props.role
 })
 
 const avatarUrl = computed(() => {
+    if (props.isMine) return props.user?.avatar_url || "/avatars/default.jpg"
     if (props.persona?.avatar_url) return props.persona.avatar_url
     return `/avatars/${props.role}.jpg`
 })
@@ -42,6 +69,25 @@ const avatarUrl = computed(() => {
     gap: 12px;
     margin-bottom: 18px;
     min-width: 0;
+}
+
+.message-item.mine {
+    flex-direction: row-reverse;
+}
+
+.message-item.mine .content {
+    align-items: flex-end;
+}
+
+.message-item.mine .username {
+    padding-right: 2px;
+    text-align: right;
+}
+
+.message-item.mine .bubble {
+    border-color: rgba(249, 140, 83, 0.38);
+    border-radius: 18px 18px 6px 18px;
+    background: linear-gradient(135deg, rgba(252, 206, 180, 0.86), rgba(255, 239, 225, 0.94));
 }
 
 .avatar {
@@ -87,9 +133,47 @@ const avatarUrl = computed(() => {
     font-size: 15px;
     line-height: 1.6;
     text-align: left;
-    white-space: pre-wrap;
     overflow-wrap: anywhere;
     word-break: break-word;
+}
+
+.message-text {
+    white-space: pre-wrap;
+}
+
+.quoted-message {
+    width: 100%;
+    min-width: 0;
+    margin: -3px 0 9px;
+    padding: 7px 10px;
+    border: 0;
+    border-left: 3px solid rgba(249, 140, 83, 0.72);
+    border-radius: 8px;
+    background: rgba(93, 79, 68, 0.07);
+    color: inherit;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    text-align: left;
+}
+
+.quoted-message strong,
+.quoted-message span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.quoted-message strong {
+    color: #b86743;
+    font-size: 12px;
+}
+
+.quoted-message span {
+    color: #75685f;
+    font-size: 12px;
 }
 
 @media (max-width: 760px) {

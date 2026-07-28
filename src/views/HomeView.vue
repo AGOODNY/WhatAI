@@ -1,8 +1,17 @@
 <template>
     <div class="app-container">
-        <ChatSidebar :currentRoomId="currentRoomId" @selectRoom="selectRoom" @createRoom="goToCreate" />
+        <ChatSidebar
+            :currentRoomId="currentRoomId"
+            @selectRoom="selectRoom"
+            @createRoom="goToCreate"
+            @roomUpdated="updateCurrentRoom"
+        />
 
-        <ChatWindow :roomId="currentRoomId" :roomName="currentRoomName" />
+        <ChatWindow
+            :roomId="currentRoomId"
+            :roomActive="currentRoomActive"
+            :roomName="currentRoomName"
+        />
     </div>
 </template>
 
@@ -16,10 +25,17 @@ import ChatWindow from "../components/chat/ChatWindow.vue"
 const router = useRouter()
 
 const currentRoomId = ref(null)
+const currentRoomActive = ref(null)
 const rooms = ref([])
 
-function selectRoom(id) {
-    currentRoomId.value = id
+function selectRoom(room) {
+    currentRoomId.value = room.id
+    currentRoomActive.value = room.is_active
+}
+
+function updateCurrentRoom(room) {
+    if (room.id !== currentRoomId.value) return
+    currentRoomActive.value = room.is_active
 }
 
 function goToCreate() {

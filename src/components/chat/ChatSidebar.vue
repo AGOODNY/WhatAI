@@ -18,7 +18,7 @@
                 { active: room.id === currentRoomId },
                 { paused: !room.is_active }
             ]"
-            @click="handleSelect(room.id)"
+            @click="handleSelect(room)"
             @mousedown.right.prevent.stop="openMenu($event, room)"
             @mouseup.right.prevent.stop="openMenu($event, room)"
             @contextmenu.prevent.stop="openMenu($event, room)"
@@ -65,7 +65,7 @@ const props = defineProps({
     currentRoomId: Number
 })
 
-const emit = defineEmits(["selectRoom", "createRoom"])
+const emit = defineEmits(["selectRoom", "createRoom", "roomUpdated"])
 
 const router = useRouter()
 
@@ -105,8 +105,8 @@ async function fetchRooms() {
     }
 }
 
-function handleSelect(id) {
-    emit("selectRoom", id)
+function handleSelect(room) {
+    emit("selectRoom", room)
 }
 
 function openMenu(e, room) {
@@ -169,6 +169,10 @@ async function toggleRoom(room) {
         const res = await axios.post(`/api/chat/rooms/${room.id}/toggle/`)
 
         room.is_active = res.data.is_active
+        emit("roomUpdated", {
+            id: room.id,
+            is_active: room.is_active,
+        })
         menu.value.visible = false
 
     } catch (err) {
