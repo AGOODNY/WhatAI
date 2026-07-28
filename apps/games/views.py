@@ -47,6 +47,7 @@ class GomokuRespondView(APIView):
             message=str(request.data.get("message", ""))[:1000],
             action=action,
             ai_move=ai_move,
+            force_reply=request.data.get("force_reply") is True,
         )
 
         return Response({
@@ -58,4 +59,3 @@ class GomokuRespondView(APIView):
                 else None
             ),
         })
-

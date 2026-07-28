@@ -112,6 +112,57 @@ class GomokuApiTests(APITestCase):
 
     @patch(
         "apps.games.services.LLMClient.generate",
+        return_value='{"speak": true, "content": "这盘得认真点了。"}',
+    )
+    def test_forced_cadence_move_must_reply(self, generate):
+        board = [[0 for _ in range(15)] for _ in range(15)]
+        board[7][7] = 1
+
+        response = self.client.post(
+            "/api/games/gomoku/respond/",
+            {
+                "persona_id": self.persona.id,
+                "board": board,
+                "history": [],
+                "message": "用户刚刚落在 H8。",
+                "action": "move",
+                "force_reply": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["reply"], "这盘得认真点了。")
+        prompt = generate.call_args.args[0]
+        self.assertIn("距离你上次开口已经下了 4-7 枚棋", prompt)
+        self.assertIn("本轮必须开口", prompt)
+
+    @patch(
+        "apps.games.services.LLMClient.generate",
+        return_value='{"speak": false, "content": ""}',
+    )
+    def test_forced_cadence_has_nonempty_fallback(self, _generate):
+        board = [[0 for _ in range(15)] for _ in range(15)]
+        board[7][7] = 1
+
+        response = self.client.post(
+            "/api/games/gomoku/respond/",
+            {
+                "persona_id": self.persona.id,
+                "board": board,
+                "history": [],
+                "message": "用户刚刚落在 H8。",
+                "action": "move",
+                "force_reply": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["reply"])
+
+    @patch(
+        "apps.games.services.LLMClient.generate",
         return_value="先不告诉你。",
     )
     def test_chat_prompt_keeps_future_move_secret(self, generate):

@@ -173,17 +173,29 @@ def _extract_json_object(text):
     return data if isinstance(data, dict) else None
 
 
-def _fallback_reply(action, ai_won, user_won):
+def _fallback_reply(action, ai_won, user_won, force_reply=False):
     if ai_won:
         return "五子连上了，这局我赢。"
     if user_won:
         return "这局是你赢。"
+    if action == "move" and force_reply:
+        return "这盘开始有点意思了。"
     if action == "move":
         return ""
     return "刚才没能接上，再说一次？"
 
 
-def generate_game_reply(*, persona, user, board, history, message, action, ai_move):
+def generate_game_reply(
+    *,
+    persona,
+    user,
+    board,
+    history,
+    message,
+    action,
+    ai_move,
+    force_reply=False,
+):
     ai_won = has_five(board, 2)
     user_won = has_five(board, 1)
     move_text = (
@@ -210,7 +222,15 @@ def generate_game_reply(*, persona, user, board, history, message, action, ai_mo
 遇到这类问题时，按当前人格自然地卖个关子、简短拒绝或把注意力留到实际落子；不要解释这条规则。
 """.strip()
 
-    if action == "move":
+    if action == "move" and force_reply:
+        output_contract = """
+距离你上次开口已经下了 4-7 枚棋，本轮必须开口，不能选择沉默。
+结合当前人格和棋局说一句自然短回复；即使局面普通，也可以说自己的即时判断、轻微吐槽或感受，
+但不要变成棋谱解说，不要机械报坐标，也不要使用套话。
+只输出合法 JSON 对象，不要输出其他内容：
+{"speak": true, "content": "一句符合私聊人格的自然短回复"}
+"""
+    elif action == "move":
         output_contract = """
 先判断这一手之后是否真的值得开口。普通布局、没有明显转折时应保持沉默。
 只有出现明显威胁或化解、精彩或意外的一手、局势转折、胜负已定，或按当前人格确实很自然地想说一句时才开口。
@@ -240,16 +260,31 @@ def generate_game_reply(*, persona, user, board, history, message, action, ai_mo
     )
 
     if not reply or reply.startswith(("（", "锛")):
-        return _fallback_reply(action, ai_won, user_won)
+        return _fallback_reply(
+            action,
+            ai_won,
+            user_won,
+            force_reply=force_reply,
+        )
 
     if action != "move":
         return reply
 
     decision = _extract_json_object(reply)
     if not decision or decision.get("speak") is not True:
-        return _fallback_reply(action, ai_won, user_won)
+        return _fallback_reply(
+            action,
+            ai_won,
+            user_won,
+            force_reply=force_reply,
+        )
 
     content = decision.get("content")
     if not isinstance(content, str) or not content.strip():
-        return _fallback_reply(action, ai_won, user_won)
+        return _fallback_reply(
+            action,
+            ai_won,
+            user_won,
+            force_reply=force_reply,
+        )
     return content.strip()
