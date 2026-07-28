@@ -2,7 +2,7 @@
     <div class="login-page">
         <div class="login-shell">
             <section class="login-intro">
-                <div class="brand-mark">CS</div>
+                <div class="brand-mark">WA</div>
                 <h1>欢迎回来</h1>
                 <p>登录 WhatAI，继续你的群聊模拟与角色对话。</p>
             </section>

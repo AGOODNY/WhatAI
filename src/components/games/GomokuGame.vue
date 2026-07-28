@@ -138,6 +138,8 @@ const winner = ref("")
 const lastMove = ref(null)
 const chatText = ref("")
 const messageContainer = ref(null)
+const stonesSinceAiSpoke = ref(0)
+const nextSpeechAt = ref(randomSpeechInterval())
 let messageId = 0
 
 startConversation()
@@ -174,6 +176,15 @@ const lastMoveText = computed(() => {
 
 function createBoard() {
     return Array.from({ length: SIZE }, () => Array(SIZE).fill(0))
+}
+
+function randomSpeechInterval() {
+    return 4 + Math.floor(Math.random() * 4)
+}
+
+function resetSpeechCadence() {
+    stonesSinceAiSpoke.value = 0
+    nextSpeechAt.value = randomSpeechInterval()
 }
 
 function columnLabel(col) {
@@ -238,6 +249,10 @@ async function sendChat() {
 }
 
 async function requestAi({ action, message }) {
+    const forceReply = (
+        action === "move"
+        && stonesSinceAiSpoke.value + 2 >= nextSpeechAt.value
+    )
     pendingAction.value = action
     pending.value = true
     await scrollToBottom()
@@ -253,12 +268,15 @@ async function requestAi({ action, message }) {
             history,
             message,
             action,
+            force_reply: forceReply,
         })
 
         const move = response.data.ai_move
+        let aiMoved = false
         if (move && board.value[move.row]?.[move.col] === 0) {
             board.value[move.row][move.col] = 2
             lastMove.value = { ...move, player: 2 }
+            aiMoved = true
 
             if (response.data.winner === "ai" || hasFive(move.row, move.col, 2)) {
                 winner.value = "ai"
@@ -272,6 +290,9 @@ async function requestAi({ action, message }) {
             : ""
         if (reply) {
             addMessage("ai", reply)
+            resetSpeechCadence()
+        } else if (action === "move" && aiMoved) {
+            stonesSinceAiSpoke.value += 2
         }
         return true
     } catch (error) {
@@ -335,6 +356,7 @@ function restartGame() {
     pending.value = false
     pendingAction.value = ""
     chatText.value = ""
+    resetSpeechCadence()
     startConversation()
     scrollToBottom()
 }
