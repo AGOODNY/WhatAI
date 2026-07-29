@@ -175,6 +175,8 @@ const props = defineProps({
 defineEmits(["back"])
 
 const TURN_SECONDS = 60
+const AI_MIN_REPLY_MS = 3000
+const MIN_COMPLETED_EXCHANGES_TO_WIN = 5
 const chain = ref([])
 const messages = ref([])
 const turn = ref("loading")
@@ -343,15 +345,21 @@ async function handleTimeout(side) {
     if (winner.value || turn.value !== side) return
 
     clearTurnTimer()
-    winner.value = side === "user" ? "ai" : "user"
-    turn.value = "finished"
+    const earlyAiTimeout = (
+        side === "ai"
+        && completedExchanges() < MIN_COMPLETED_EXCHANGES_TO_WIN
+    )
+    winner.value = side === "user" ? "ai" : earlyAiTimeout ? "" : "user"
+    turn.value = earlyAiTimeout ? "loading" : "finished"
     gamePending.value = false
     gameAbortController?.abort()
     matchVersion += 1
 
     const fallback = side === "user"
         ? "时间到，这局归我。"
-        : "我超时了，这局算你赢。"
+        : earlyAiTimeout
+            ? "我刚才卡住了，这轮不算，重新接一次。"
+            : "我超时了，这局算你赢。"
     try {
         const response = await axios.post("/api/games/idiom/respond/", {
             persona_id: props.persona.id,
@@ -363,9 +371,17 @@ async function handleTimeout(side) {
             message: `${side === "user" ? "用户" : "AI"}思考超时。`,
         })
         addMessage("ai", response.data.reply || fallback)
+        if (earlyAiTimeout && !response.data.winner) {
+            winner.value = ""
+            startTurn("user")
+        }
     } catch (error) {
         console.error(error)
         addMessage("ai", fallback)
+        if (earlyAiTimeout) {
+            winner.value = ""
+            startTurn("user")
+        }
     }
 }
 
@@ -393,6 +409,7 @@ async function submitIdiom() {
     chatText.value = ""
     addMessage("user", content)
     gamePending.value = true
+    const aiTurnStartedAt = Date.now()
     startTurn("ai")
     gameAbortController = new AbortController()
 
@@ -441,7 +458,11 @@ async function submitIdiom() {
             return
         }
 
-        await wait(650 + Math.random() * 650)
+        const remainingThinkTime = Math.max(
+            0,
+            AI_MIN_REPLY_MS - (Date.now() - aiTurnStartedAt),
+        )
+        await wait(remainingThinkTime)
         if (version !== matchVersion || winner.value) return
 
         chain.value.push({
@@ -512,6 +533,15 @@ async function sendChat() {
 
 function serializableChain() {
     return chain.value.map(({ word, player }) => ({ word, player }))
+}
+
+function completedExchanges() {
+    const userWords = chain.value.filter(item => item.player === "user").length
+    const aiRepliesAfterOpening = Math.max(
+        0,
+        chain.value.filter(item => item.player === "ai").length - 1,
+    )
+    return Math.min(userWords, aiRepliesAfterOpening)
 }
 
 function serializableHistory() {
