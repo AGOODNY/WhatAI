@@ -226,11 +226,12 @@ def _encode_game_token(payload):
 
 
 def create_game_token(user, persona, opening):
-    # About 45% of matches give the player a reachable AI stumble after
-    # several genuinely correct answers. The rest keep the AI competitive.
+    # About 25% of matches give the player a reachable AI stumble after
+    # 5-7 genuinely correct answers. The rest keep the AI competitive.
+    rng = random.SystemRandom()
     stumble_after = (
-        random.SystemRandom().choice((3, 4, 4, 5, 5, 6))
-        if random.SystemRandom().random() < 0.45
+        rng.choice((5, 6, 7))
+        if rng.random() < 0.25
         else None
     )
     return signing.dumps(
