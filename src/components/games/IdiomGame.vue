@@ -1178,13 +1178,13 @@ function wait(milliseconds) {
     16%,
     52%,
     82% {
-        color: #783b1d;
-        background: #ffd98f;
+        color: #7d6456;
+        background: #f8ece4;
         box-shadow:
-            0 0 0 5px rgba(242, 150, 84, 0.14),
-            0 0 20px rgba(238, 126, 67, 0.48);
-        filter: brightness(1.06) saturate(1.2);
-        transform: scale(1.09);
+            0 0 0 3px rgba(205, 164, 139, 0.08),
+            0 0 12px rgba(193, 145, 116, 0.18);
+        filter: brightness(1.02) saturate(1.03);
+        transform: scale(1.035);
     }
 
     32%,
@@ -1193,7 +1193,7 @@ function wait(milliseconds) {
         background: var(--tile-background);
         box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.42);
         filter: none;
-        transform: scale(1.015);
+        transform: scale(1.005);
     }
 }
 
