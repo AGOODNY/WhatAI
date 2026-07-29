@@ -78,6 +78,8 @@
                 <span>同音不同调不可接</span>
                 <i></i>
                 <span>成语不可重复</span>
+                <i></i>
+                <span>生僻成语智能核验</span>
             </footer>
         </section>
 
@@ -172,7 +174,7 @@ const props = defineProps({
 
 defineEmits(["back"])
 
-const TURN_SECONDS = 30
+const TURN_SECONDS = 60
 const chain = ref([])
 const messages = ref([])
 const turn = ref("loading")
@@ -412,10 +414,17 @@ async function submitIdiom() {
         if (!response.data.accepted) {
             gamePending.value = false
             addMessage("ai", response.data.reply || response.data.error || "这次没有接上。")
-            resumeUserTurn(userDeadline)
+            if (response.data.reset_timer) {
+                startTurn("user")
+            } else {
+                resumeUserTurn(userDeadline)
+            }
             return
         }
 
+        if (response.data.game_token) {
+            gameToken.value = response.data.game_token
+        }
         chain.value.push({
             id: ++chainId,
             word: response.data.user_word,

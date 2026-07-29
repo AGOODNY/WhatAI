@@ -108,7 +108,7 @@ const games = [
         id: "idiom",
         name: "成语接龙",
         symbol: "成",
-        description: "同音同调也能接，三十秒里看看谁先词穷",
+        description: "同音同调也能接，一分钟里看看谁先词穷",
         available: true,
     },
     {
