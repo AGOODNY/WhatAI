@@ -1,7 +1,12 @@
 <template>
     <div class="play-page">
         <GomokuGame
-            v-if="stage === 'game' && selectedPersona"
+            v-if="stage === 'game' && selectedPersona && selectedGame?.id === 'gomoku'"
+            :persona="selectedPersona"
+            @back="stage = 'persona'"
+        />
+        <IdiomGame
+            v-else-if="stage === 'game' && selectedPersona && selectedGame?.id === 'idiom'"
             :persona="selectedPersona"
             @back="stage = 'persona'"
         />
@@ -22,7 +27,7 @@
                     <p class="subtitle">
                         {{ stage === "catalog"
                             ? "什么？你说你没有朋友？你的朋友来力！"
-                            : "选择一个已有 AI 人格开始五子棋。"
+                            : `选择一个已有 AI 人格开始${selectedGame?.name || "游戏"}。`
                         }}
                     </p>
                 </div>
@@ -68,7 +73,7 @@
                         <img :src="persona.avatar_url || persona.avatar || '/avatars/default.jpg'" alt="" />
                         <span class="persona-copy">
                             <strong>{{ persona.name }}</strong>
-                            <span>{{ persona.description || "等你落下第一枚棋子。" }}</span>
+                            <span>{{ persona.description || personaFallback }}</span>
                         </span>
                         <span class="challenge">对局 →</span>
                     </button>
@@ -82,10 +87,12 @@
 import { ref } from "vue"
 import axios from "../api/axios"
 import GomokuGame from "../components/games/GomokuGame.vue"
+import IdiomGame from "../components/games/IdiomGame.vue"
 
 const stage = ref("catalog")
 const personas = ref([])
 const selectedPersona = ref(null)
+const selectedGame = ref(null)
 const loading = ref(false)
 const loadError = ref("")
 
@@ -101,8 +108,8 @@ const games = [
         id: "idiom",
         name: "成语接龙",
         symbol: "成",
-        description: "你确定要和大语言模型玩这个？（意味深）",
-        available: false,
+        description: "同音同调也能接，三十秒里看看谁先词穷",
+        available: true,
     },
     {
         id: "poetry",
@@ -115,6 +122,8 @@ const games = [
 
 async function selectGame(game) {
     if (!game.available) return
+    selectedGame.value = game
+    selectedPersona.value = null
     stage.value = "persona"
     if (!personas.value.length) {
         await fetchPersonas()
@@ -139,6 +148,8 @@ function startGame(persona) {
     selectedPersona.value = persona
     stage.value = "game"
 }
+
+const personaFallback = "已经在游戏桌边等你了。"
 </script>
 
 <style scoped>
@@ -400,4 +411,3 @@ h1 {
     }
 }
 </style>
-
