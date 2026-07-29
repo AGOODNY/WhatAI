@@ -63,7 +63,17 @@
                             <span
                                 v-for="(character, charIndex) in [...item.word]"
                                 :key="`${item.id}-${charIndex}`"
-                                :class="{ link: index > 0 && charIndex === 0 }"
+                                :class="{
+                                    'chain-head-flash': (
+                                        index > 0
+                                        && index === chain.length - 1
+                                        && charIndex === 0
+                                    ),
+                                    'chain-tail-flash': (
+                                        index === chain.length - 2
+                                        && charIndex === item.word.length - 1
+                                    ),
+                                }"
                             >
                                 {{ character }}
                             </span>
@@ -119,10 +129,12 @@
 
             <form class="chat-input" @submit.prevent="smartSend">
                 <input
+                    ref="chatInput"
                     v-model="chatText"
                     type="text"
                     maxlength="1000"
-                    :disabled="inputDisabled"
+                    :readonly="inputDisabled"
+                    :aria-readonly="inputDisabled"
                     :placeholder="inputPlaceholder"
                 />
                 <div class="input-actions">
@@ -189,6 +201,7 @@ const gamePending = ref(false)
 const chatPending = ref(false)
 const chainContainer = ref(null)
 const messageContainer = ref(null)
+const chatInput = ref(null)
 
 let chainId = 0
 let messageId = 0
@@ -293,6 +306,7 @@ async function startGame() {
         startPending.value = false
         startTurn("user")
         await scrollChainToBottom()
+        await focusInput()
     } catch (error) {
         if (version !== matchVersion) return
         console.error(error)
@@ -383,6 +397,7 @@ async function handleTimeout(side) {
             startTurn("user")
         }
     }
+    await focusInput()
 }
 
 function smartSend() {
@@ -409,6 +424,7 @@ async function submitIdiom() {
     chatText.value = ""
     addMessage("user", content)
     gamePending.value = true
+    focusInput()
     const aiTurnStartedAt = Date.now()
     startTurn("ai")
     gameAbortController = new AbortController()
@@ -489,6 +505,7 @@ async function submitIdiom() {
         if (version === matchVersion) {
             gamePending.value = false
             gameAbortController = null
+            focusInput()
         }
     }
 }
@@ -500,6 +517,7 @@ async function sendChat() {
     chatText.value = ""
     addMessage("user", content)
     chatPending.value = true
+    focusInput()
     chatAbortController = new AbortController()
 
     try {
@@ -528,6 +546,7 @@ async function sendChat() {
     } finally {
         chatPending.value = false
         chatAbortController = null
+        focusInput()
     }
 }
 
@@ -568,6 +587,11 @@ async function scrollChainToBottom() {
     await nextTick()
     const el = chainContainer.value
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
+}
+
+async function focusInput() {
+    await nextTick()
+    chatInput.value?.focus({ preventScroll: true })
 }
 
 function wait(milliseconds) {
@@ -850,14 +874,16 @@ function wait(milliseconds) {
 }
 
 .word-tiles span {
+    --tile-background:
+        linear-gradient(145deg, rgba(255,255,255,.82), rgba(252,237,226,.7));
+    --tile-color: #654536;
     aspect-ratio: 1;
     display: grid;
     place-items: center;
     border: 1px solid rgba(220, 176, 146, 0.24);
     border-radius: 13px;
-    color: #654536;
-    background:
-        linear-gradient(145deg, rgba(255,255,255,.82), rgba(252,237,226,.7));
+    color: var(--tile-color);
+    background: var(--tile-background);
     font-family: "STKaiti", "KaiTi", "Microsoft YaHei", serif;
     font-size: clamp(21px, 2.25vw, 31px);
     font-weight: 900;
@@ -865,13 +891,16 @@ function wait(milliseconds) {
 }
 
 .idiom-card.user .word-tiles span {
+    --tile-background: linear-gradient(145deg, #fff, #eaf5fc);
+    --tile-color: #3e5e73;
     border-color: rgba(133, 180, 211, 0.24);
-    color: #3e5e73;
-    background: linear-gradient(145deg, #fff, #eaf5fc);
 }
 
-.word-tiles span.link {
-    animation: link-glow 1.1s ease-out;
+.word-tiles span.chain-head-flash,
+.word-tiles span.chain-tail-flash {
+    position: relative;
+    z-index: 2;
+    animation: chain-link-flash 1.45s ease-out;
 }
 
 .opening-state {
@@ -1136,15 +1165,35 @@ function wait(milliseconds) {
     }
 }
 
-@keyframes link-glow {
-    from {
-        box-shadow: 0 0 0 0 rgba(236, 139, 84, 0.5);
-    }
-    55% {
-        box-shadow: 0 0 0 7px rgba(236, 139, 84, 0.08);
-    }
-    to {
+@keyframes chain-link-flash {
+    0%,
+    100% {
+        color: var(--tile-color);
+        background: var(--tile-background);
         box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.42);
+        filter: none;
+        transform: scale(1);
+    }
+
+    16%,
+    52%,
+    82% {
+        color: #783b1d;
+        background: #ffd98f;
+        box-shadow:
+            0 0 0 5px rgba(242, 150, 84, 0.14),
+            0 0 20px rgba(238, 126, 67, 0.48);
+        filter: brightness(1.06) saturate(1.2);
+        transform: scale(1.09);
+    }
+
+    32%,
+    68% {
+        color: var(--tile-color);
+        background: var(--tile-background);
+        box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.42);
+        filter: none;
+        transform: scale(1.015);
     }
 }
 
@@ -1225,7 +1274,8 @@ function wait(milliseconds) {
     .cascade-enter-active,
     .timer.urgent,
     .opening-seal,
-    .word-tiles span.link,
+    .word-tiles span.chain-head-flash,
+    .word-tiles span.chain-tail-flash,
     .typing i,
     .chat-header i.thinking {
         animation: none;
