@@ -71,6 +71,14 @@ class IdiomServiceTests(SimpleTestCase):
         self.assertFalse(accepted)
         self.assertIn("不是同音同调", reason)
 
+    def test_non_chinese_four_character_input_is_rejected(self):
+        chain = [{"word": "自不量力", "player": "ai"}]
+
+        accepted, reason = validate_submission("abcd", chain)
+
+        self.assertFalse(accepted)
+        self.assertEqual(reason, "请输入一个四字成语。")
+
 
 class GomokuApiTests(APITestCase):
     def setUp(self):
@@ -268,7 +276,7 @@ class IdiomApiTests(APITestCase):
         self.assertIn(response.data["chain"][0]["word"], IDIOMS)
         self.assertEqual(response.data["chain"][0]["player"], "ai")
         self.assertEqual(response.data["turn"], "user")
-        self.assertEqual(response.data["seconds"], 30)
+        self.assertEqual(response.data["seconds"], 60)
         self.assertTrue(response.data["game_token"])
 
     @patch(
@@ -339,6 +347,133 @@ class IdiomApiTests(APITestCase):
                 "history": [],
                 "action": "submit",
                 "message": "离经叛道",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.data["accepted"])
+        self.assertIn("不是同音同调", response.data["error"])
+
+    @patch("apps.games.idiom_services.LLMClient.generate")
+    def test_unknown_valid_idiom_is_judged_and_signed_into_game_token(self, generate):
+        generate.side_effect = [
+            (
+                '{"valid": true, "first": "feng1", "last": "li4", '
+                '"reason": ""}'
+            ),
+            "接得可以，我也来一个。",
+            "当然还没结束。",
+        ]
+        token = create_game_token(self.user, self.persona, "空穴来风")
+        response = self.client.post(
+            "/api/games/idiom/respond/",
+            {
+                "persona_id": self.persona.id,
+                "game_token": token,
+                "chain": [{"word": "空穴来风", "player": "ai"}],
+                "history": [],
+                "action": "submit",
+                "message": "风声鹤唳",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["accepted"])
+        self.assertEqual(response.data["user_word"], "风声鹤唳")
+        self.assertTrue(response.data["game_token"])
+        self.assertIsNotNone(response.data["ai_word"])
+        self.assertEqual(
+            IDIOMS[response.data["ai_word"]]["first"],
+            "li4",
+        )
+        judge_call = generate.call_args_list[0]
+        self.assertIn("严格的现代汉语成语词典校验器", judge_call.args[0])
+        self.assertEqual(judge_call.kwargs["temperature"], 0.0)
+
+        continued_chain = [
+            {"word": "空穴来风", "player": "ai"},
+            {"word": "风声鹤唳", "player": "user"},
+            {"word": response.data["ai_word"], "player": "ai"},
+        ]
+        continued = self.client.post(
+            "/api/games/idiom/respond/",
+            {
+                "persona_id": self.persona.id,
+                "game_token": response.data["game_token"],
+                "chain": continued_chain,
+                "history": [],
+                "action": "chat",
+                "message": "还没结束吧？",
+            },
+            format="json",
+        )
+
+        self.assertEqual(continued.status_code, 200)
+        self.assertEqual(continued.data["reply"], "当然还没结束。")
+
+        rejected_old_token = self.client.post(
+            "/api/games/idiom/respond/",
+            {
+                "persona_id": self.persona.id,
+                "game_token": token,
+                "chain": continued_chain,
+                "history": [],
+                "action": "chat",
+                "message": "旧凭证不该接受动态词条",
+            },
+            format="json",
+        )
+        self.assertEqual(rejected_old_token.status_code, 400)
+
+    @patch("apps.games.idiom_services.LLMClient.generate")
+    def test_unknown_invalid_phrase_is_rejected_and_timer_resets(self, generate):
+        generate.side_effect = [
+            (
+                '{"valid": false, "first": "", "last": "", '
+                '"reason": "这是临时拼接的四字短语"}'
+            ),
+            "这个不算成语，换一个。",
+        ]
+        token = create_game_token(self.user, self.persona, "空穴来风")
+        response = self.client.post(
+            "/api/games/idiom/respond/",
+            {
+                "persona_id": self.persona.id,
+                "game_token": token,
+                "chain": [{"word": "空穴来风", "player": "ai"}],
+                "history": [],
+                "action": "submit",
+                "message": "风来水转",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.data["accepted"])
+        self.assertTrue(response.data["reset_timer"])
+        self.assertIn("临时拼接", response.data["error"])
+
+    @patch("apps.games.idiom_services.LLMClient.generate")
+    def test_unknown_idiom_with_wrong_tone_is_rejected(self, generate):
+        generate.side_effect = [
+            (
+                '{"valid": true, "first": "feng4", "last": "li4", '
+                '"reason": ""}'
+            ),
+            "声调不对。",
+        ]
+        token = create_game_token(self.user, self.persona, "空穴来风")
+        response = self.client.post(
+            "/api/games/idiom/respond/",
+            {
+                "persona_id": self.persona.id,
+                "game_token": token,
+                "chain": [{"word": "空穴来风", "player": "ai"}],
+                "history": [],
+                "action": "submit",
+                "message": "风来水转",
             },
             format="json",
         )
