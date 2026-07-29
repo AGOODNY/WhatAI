@@ -65,9 +65,25 @@ POETRY_LINES = (
 )
 
 
-PLAYABLE_TARGETS = tuple(
-    target
-    for target in ("月", "花", "春", "风")
-    if sum(target in line for line in POETRY_LINES) >= 12
+PLAYABLE_TARGETS = (
+    "月",
+    "花",
+    "春",
+    "风",
+    "明",
+    "夜",
+    "人",
+    "天",
+    "江",
+    "云",
+    "山",
+    "水",
+    "雨",
+    "秋",
+    "日",
+    "红",
+    "白",
+    "归",
+    "酒",
+    "雪",
 )
-

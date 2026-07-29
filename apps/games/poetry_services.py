@@ -20,9 +20,11 @@ MAX_VERSES = 80
 
 
 def normalize_verse(value):
-    text = re.sub(r"\s+", "", str(value or "").strip())
+    text = str(value or "").strip()
     text = text.strip("“”「」『』")
     text = text.replace(",", "，").replace(";", "；")
+    text = re.sub(r"\s*([，；])\s*", r"\1", text)
+    text = re.sub(r"\s+", "，", text)
     return text.rstrip("。！？!?")
 
 

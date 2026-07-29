@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from .builtin_descriptions import get_builtin_description
 from .models import Persona
 
 
@@ -39,3 +40,12 @@ class PersonaSerializer(serializers.ModelSerializer):
             if field in attrs and isinstance(attrs[field], str):
                 attrs[field] = attrs[field].strip()
         return attrs
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if instance.is_builtin:
+            data["description"] = get_builtin_description(
+                instance.legacy_role,
+                data["description"],
+            )
+        return data

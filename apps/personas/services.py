@@ -1,17 +1,23 @@
 from .models import Persona
+from .builtin_descriptions import get_builtin_description
 from .personas import get_persona
 
 
 def build_persona_dict(persona):
+    description = (
+        get_builtin_description(persona.legacy_role, persona.description)
+        if persona.is_builtin
+        else persona.description
+    )
     result = {
         "id": persona.id,
         "name": str(persona.id),
         "display_name": persona.name,
         "avatar": persona.avatar_url,
-        "description": persona.description,
+        "description": description,
         "core_traits": [
             item.strip()
-            for item in persona.description.splitlines()
+            for item in description.splitlines()
             if item.strip()
         ],
         "speaking_style": {

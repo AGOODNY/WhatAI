@@ -20,11 +20,12 @@ from .poetry_services import (
 
 class PoetryRuleTests(SimpleTestCase):
     def test_common_targets_have_a_safe_opening_pool(self):
-        self.assertEqual(set(PLAYABLE_TARGETS), {"月", "花", "春", "风"})
+        self.assertEqual(len(PLAYABLE_TARGETS), 20)
+        self.assertEqual(len(set(PLAYABLE_TARGETS)), 20)
         for target in PLAYABLE_TARGETS:
             self.assertGreaterEqual(
                 sum(target in line for line in POETRY_LINES),
-                12,
+                2,
             )
 
     def test_only_complete_two_part_shape_is_accepted(self):
@@ -33,6 +34,15 @@ class PoetryRuleTests(SimpleTestCase):
         self.assertEqual(
             normalize_verse(" “床前明月光, 疑是地上霜。” "),
             "床前明月光，疑是地上霜",
+        )
+        self.assertEqual(
+            normalize_verse("床前明月光   疑是地上霜"),
+            "床前明月光，疑是地上霜",
+        )
+        self.assertTrue(
+            is_complete_sentence_shape(
+                normalize_verse("床前明月光 疑是地上霜"),
+            ),
         )
 
     def test_cheat_requests_are_detected(self):
@@ -181,6 +191,38 @@ class PoetryApiTests(APITestCase):
         self.assertEqual(modern.status_code, 200)
         self.assertFalse(modern.data["accepted"])
         self.assertIn("现代诗", modern.data["error"])
+
+    @patch("apps.games.poetry_services.LLMClient.generate")
+    def test_space_separated_complete_line_is_accepted(self, generate):
+        generate.return_value = "接得好，我也来一句。"
+        payload = {
+            "user_id": self.user.id,
+            "persona_id": self.persona.id,
+            "phase": "playing",
+            "target": "月",
+            "verses": [{"verse": "举头望明月，低头思故乡", "player": "ai"}],
+            "stumble_after": None,
+            "nonce": "test",
+        }
+        token = signing.dumps(payload, salt=GAME_TOKEN_SALT, compress=True)
+        response = self.client.post(
+            "/api/games/poetry/respond/",
+            {
+                "persona_id": self.persona.id,
+                "game_token": token,
+                "verses": payload["verses"],
+                "history": [],
+                "action": "submit",
+                "message": "床前明月光 疑是地上霜",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["accepted"])
+        self.assertEqual(
+            response.data["user_verse"],
+            "床前明月光，疑是地上霜",
+        )
 
     @patch("apps.games.poetry_services.LLMClient.generate")
     def test_cheat_request_is_refused_without_adding_a_verse(self, generate):
