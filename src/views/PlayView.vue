@@ -10,6 +10,11 @@
             :persona="selectedPersona"
             @back="stage = 'persona'"
         />
+        <PoetryGame
+            v-else-if="stage === 'game' && selectedPersona && selectedGame?.id === 'poetry'"
+            :persona="selectedPersona"
+            @back="stage = 'persona'"
+        />
 
         <section v-else class="selection-panel">
             <header class="page-header">
@@ -88,6 +93,7 @@ import { ref } from "vue"
 import axios from "../api/axios"
 import GomokuGame from "../components/games/GomokuGame.vue"
 import IdiomGame from "../components/games/IdiomGame.vue"
+import PoetryGame from "../components/games/PoetryGame.vue"
 
 const stage = ref("catalog")
 const personas = ref([])
@@ -108,15 +114,15 @@ const games = [
         id: "idiom",
         name: "成语接龙",
         symbol: "成",
-        description: "同音同调也能接，一分钟里看看谁先词穷",
+        description: "来吧，和AI大战一场，看看谁的知识储备更丰富！",
         available: true,
     },
     {
         id: "poetry",
         name: "飞花令",
         symbol: "花",
-        description: "你还确定要和大语言模型玩这个？（意味深）",
-        available: false,
+        description: "来吧，和AI大战一场，看看谁的知识储备更丰富！",
+        available: true,
     },
 ]
 
