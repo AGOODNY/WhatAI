@@ -6,6 +6,12 @@ from rest_framework.test import APITestCase
 
 from apps.personas.models import Persona
 
+from .idiom_data import IDIOMS
+from .idiom_services import (
+    create_game_token,
+    same_syllable_and_tone,
+    validate_submission,
+)
 from .services import choose_ai_move, has_five, validate_board
 
 
@@ -42,6 +48,28 @@ class GomokuServiceTests(SimpleTestCase):
 
         with self.assertRaises(ValueError):
             validate_board(board)
+
+
+class IdiomServiceTests(SimpleTestCase):
+    def test_same_syllable_requires_same_tone(self):
+        self.assertTrue(same_syllable_and_tone("li4", "li4"))
+        self.assertFalse(same_syllable_and_tone("li4", "li2"))
+
+    def test_homophone_with_same_tone_is_accepted(self):
+        chain = [{"word": "自不量力", "player": "ai"}]
+
+        accepted, reason = validate_submission("丽句清词", chain)
+
+        self.assertTrue(accepted)
+        self.assertEqual(reason, "")
+
+    def test_homophone_with_different_tone_is_rejected(self):
+        chain = [{"word": "自不量力", "player": "ai"}]
+
+        accepted, reason = validate_submission("离经叛道", chain)
+
+        self.assertFalse(accepted)
+        self.assertIn("不是同音同调", reason)
 
 
 class GomokuApiTests(APITestCase):
@@ -210,3 +238,111 @@ class GomokuApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, 400)
+
+
+class IdiomApiTests(APITestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="idiom-player",
+            password="test-password",
+        )
+        self.persona = Persona.objects.create(
+            name="接龙搭档",
+            description="喜欢文字游戏",
+            is_builtin=True,
+        )
+        self.client.force_authenticate(self.user)
+
+    @patch(
+        "apps.games.idiom_services.LLMClient.generate",
+        return_value="一心一意，接得上就来。",
+    )
+    def test_start_returns_opening_and_timer(self, _generate):
+        response = self.client.post(
+            "/api/games/idiom/start/",
+            {"persona_id": self.persona.id},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(response.data["chain"][0]["word"], IDIOMS)
+        self.assertEqual(response.data["chain"][0]["player"], "ai")
+        self.assertEqual(response.data["turn"], "user")
+        self.assertEqual(response.data["seconds"], 30)
+        self.assertTrue(response.data["game_token"])
+
+    @patch(
+        "apps.games.idiom_services.LLMClient.generate",
+        return_value="这条规矩还算简单。",
+    )
+    def test_chat_reuses_private_prompt_and_knows_tone_rule(self, generate):
+        token = create_game_token(self.user, self.persona, "自不量力")
+        response = self.client.post(
+            "/api/games/idiom/respond/",
+            {
+                "persona_id": self.persona.id,
+                "game_token": token,
+                "chain": [{"word": "自不量力", "player": "ai"}],
+                "history": [{"role": "user", "content": "规则是什么？"}],
+                "action": "chat",
+                "message": "规则是什么？",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        prompt = generate.call_args.args[0]
+        self.assertIn("你正在和用户进行一对一私聊", prompt)
+        self.assertIn("“力”lì 可以接“丽”lì", prompt)
+        self.assertIn("不能接“离”lí", prompt)
+        self.assertIn("按你当前的人格自然回答", prompt)
+
+    @patch(
+        "apps.games.idiom_services.LLMClient.generate",
+        return_value="接得不错。",
+    )
+    def test_valid_homophone_submission_gets_ai_idiom(self, _generate):
+        token = create_game_token(self.user, self.persona, "自不量力")
+        response = self.client.post(
+            "/api/games/idiom/respond/",
+            {
+                "persona_id": self.persona.id,
+                "game_token": token,
+                "chain": [{"word": "自不量力", "player": "ai"}],
+                "history": [],
+                "action": "submit",
+                "message": "丽句清词",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["accepted"])
+        self.assertEqual(response.data["user_word"], "丽句清词")
+        ai_word = response.data["ai_word"]
+        if ai_word:
+            self.assertEqual(IDIOMS[ai_word]["first"], IDIOMS["丽句清词"]["last"])
+            self.assertIn(ai_word, response.data["reply"])
+
+    @patch(
+        "apps.games.idiom_services.LLMClient.generate",
+        return_value="声调不对，再想想。",
+    )
+    def test_different_tone_submission_is_not_added(self, _generate):
+        token = create_game_token(self.user, self.persona, "自不量力")
+        response = self.client.post(
+            "/api/games/idiom/respond/",
+            {
+                "persona_id": self.persona.id,
+                "game_token": token,
+                "chain": [{"word": "自不量力", "player": "ai"}],
+                "history": [],
+                "action": "submit",
+                "message": "离经叛道",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.data["accepted"])
+        self.assertIn("不是同音同调", response.data["error"])
