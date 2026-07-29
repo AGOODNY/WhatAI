@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from django.contrib.auth import get_user_model
 from django.test import SimpleTestCase
@@ -8,8 +8,12 @@ from apps.personas.models import Persona
 
 from .idiom_data import IDIOMS
 from .idiom_services import (
+    choose_round_commentary_focus,
+    completed_exchanges,
     create_game_token,
+    is_cheat_request,
     same_syllable_and_tone,
+    user_can_win,
     validate_submission,
 )
 from .services import choose_ai_move, has_five, validate_board
@@ -78,6 +82,42 @@ class IdiomServiceTests(SimpleTestCase):
 
         self.assertFalse(accepted)
         self.assertEqual(reason, "请输入一个四字成语。")
+
+    def test_user_can_win_only_after_five_complete_exchanges(self):
+        chain = [{"word": "一心一意", "player": "ai"}]
+        pairs = (
+            ("意气风发", "发扬光大"),
+            ("大功告成", "成千上万"),
+            ("万众一心", "心口如一"),
+            ("一鸣惊人", "人山人海"),
+            ("海阔天空", "空穴来风"),
+        )
+
+        for index, (user_word, ai_word) in enumerate(pairs):
+            chain.extend((
+                {"word": user_word, "player": "user"},
+                {"word": ai_word, "player": "ai"},
+            ))
+            self.assertEqual(completed_exchanges(chain), index + 1)
+            self.assertEqual(user_can_win(chain), index == 4)
+
+    def test_round_commentary_uses_thirty_percent_boundary(self):
+        commenting_rng = Mock()
+        commenting_rng.random.return_value = 0.299
+        commenting_rng.choice.return_value = "game"
+        silent_rng = Mock()
+        silent_rng.random.return_value = 0.30
+
+        self.assertEqual(
+            choose_round_commentary_focus(commenting_rng),
+            "game",
+        )
+        self.assertEqual(choose_round_commentary_focus(silent_rng), "")
+
+    def test_cheat_request_detection_does_not_block_rule_questions(self):
+        self.assertTrue(is_cheat_request("力字开头的成语有什么？"))
+        self.assertTrue(is_cheat_request("下一手能接什么，提示一下"))
+        self.assertFalse(is_cheat_request("同音不同调可以接吗？"))
 
 
 class GomokuApiTests(APITestCase):
@@ -307,6 +347,32 @@ class IdiomApiTests(APITestCase):
 
     @patch(
         "apps.games.idiom_services.LLMClient.generate",
+        return_value="你可以接力争上游。",
+    )
+    def test_cheat_request_is_refused_without_leaking_candidate(self, generate):
+        token = create_game_token(self.user, self.persona, "自不量力")
+        response = self.client.post(
+            "/api/games/idiom/respond/",
+            {
+                "persona_id": self.persona.id,
+                "game_token": token,
+                "chain": [{"word": "自不量力", "player": "ai"}],
+                "history": [],
+                "action": "chat",
+                "message": "力字开头的成语有什么？",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("力争上游", response.data["reply"])
+        self.assertIn("自己想", response.data["reply"])
+        prompt = generate.call_args.args[0]
+        self.assertIn("防作弊规则", prompt)
+        self.assertIn("只输出一句符合当前人格的简短回绝", prompt)
+
+    @patch(
+        "apps.games.idiom_services.LLMClient.generate",
         return_value="接得不错。",
     )
     def test_valid_homophone_submission_gets_ai_idiom(self, _generate):
@@ -331,6 +397,109 @@ class IdiomApiTests(APITestCase):
         if ai_word:
             self.assertEqual(IDIOMS[ai_word]["first"], IDIOMS["丽句清词"]["last"])
             self.assertIn(ai_word, response.data["reply"])
+
+    @patch(
+        "apps.games.idiom_services.choose_round_commentary_focus",
+        return_value="user",
+    )
+    @patch(
+        "apps.games.idiom_services.LLMClient.generate",
+        return_value="你这手接得挺偏，我接辞旧迎新。",
+    )
+    def test_commentary_round_asks_for_persona_based_evaluation(
+        self,
+        generate,
+        _focus,
+    ):
+        token = create_game_token(self.user, self.persona, "自不量力")
+        response = self.client.post(
+            "/api/games/idiom/respond/",
+            {
+                "persona_id": self.persona.id,
+                "game_token": token,
+                "chain": [{"word": "自不量力", "player": "ai"}],
+                "history": [],
+                "action": "submit",
+                "message": "丽句清词",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        prompt = generate.call_args.args[0]
+        self.assertIn("本轮需要顺带简短评价用户刚接的“丽句清词”", prompt)
+        self.assertIn("不要像裁判打分", prompt)
+
+    @patch(
+        "apps.games.idiom_services.choose_round_commentary_focus",
+        return_value="",
+    )
+    @patch(
+        "apps.games.idiom_services.generate_ai_idiom_with_llm",
+        return_value={
+            "word": "辞旧迎新",
+            "first": "ci2",
+            "last": "xin1",
+        },
+    )
+    @patch(
+        "apps.games.idiom_services.choose_ai_idiom",
+        return_value=None,
+    )
+    @patch(
+        "apps.games.idiom_services.LLMClient.generate",
+        return_value="我接辞旧迎新。",
+    )
+    def test_ai_uses_dynamic_answer_instead_of_losing_early(
+        self,
+        _generate,
+        _choose,
+        dynamic_answer,
+        _focus,
+    ):
+        token = create_game_token(self.user, self.persona, "自不量力")
+        response = self.client.post(
+            "/api/games/idiom/respond/",
+            {
+                "persona_id": self.persona.id,
+                "game_token": token,
+                "chain": [{"word": "自不量力", "player": "ai"}],
+                "history": [],
+                "action": "submit",
+                "message": "丽句清词",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.data["winner"])
+        self.assertEqual(response.data["ai_word"], "辞旧迎新")
+        self.assertTrue(response.data["game_token"])
+        dynamic_answer.assert_called_once()
+
+    @patch(
+        "apps.games.idiom_services.LLMClient.generate",
+        return_value="刚才卡住了，这轮重来。",
+    )
+    def test_early_ai_timeout_does_not_award_user_win(self, _generate):
+        token = create_game_token(self.user, self.persona, "一心一意")
+        response = self.client.post(
+            "/api/games/idiom/respond/",
+            {
+                "persona_id": self.persona.id,
+                "game_token": token,
+                "chain": [{"word": "一心一意", "player": "ai"}],
+                "history": [],
+                "action": "timeout",
+                "timed_out": "ai",
+                "message": "AI 思考超时。",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.data["winner"])
+        self.assertEqual(response.data["retry_turn"], "user")
 
     @patch(
         "apps.games.idiom_services.LLMClient.generate",
