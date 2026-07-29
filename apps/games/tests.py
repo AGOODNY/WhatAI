@@ -12,6 +12,7 @@ from .idiom_services import (
     completed_exchanges,
     create_game_token,
     is_cheat_request,
+    pinyin_is_similar,
     same_syllable_and_tone,
     user_can_win,
     validate_submission,
@@ -82,6 +83,13 @@ class IdiomServiceTests(SimpleTestCase):
 
         self.assertFalse(accepted)
         self.assertEqual(reason, "请输入一个四字成语。")
+
+    def test_fuzzy_pinyin_only_covers_common_sound_confusions(self):
+        self.assertTrue(pinyin_is_similar("li4", "li2"))
+        self.assertTrue(pinyin_is_similar("shen1", "sheng1"))
+        self.assertTrue(pinyin_is_similar("zhan3", "zhang1"))
+        self.assertTrue(pinyin_is_similar("shi4", "si1"))
+        self.assertFalse(pinyin_is_similar("li4", "hai3"))
 
     def test_user_can_win_only_after_five_complete_exchanges(self):
         chain = [{"word": "一心一意", "player": "ai"}]
@@ -344,6 +352,85 @@ class IdiomApiTests(APITestCase):
         self.assertIn("“力”lì 可以接“丽”lì", prompt)
         self.assertIn("不能接“离”lí", prompt)
         self.assertIn("按你当前的人格自然回答", prompt)
+
+    @patch("apps.games.idiom_services.LLMClient.generate")
+    def test_smart_four_character_conversation_is_routed_to_chat(self, generate):
+        generate.side_effect = [
+            (
+                '{"looks_like_idiom": false, "valid_idiom": false, '
+                '"first": "", "last": "", "reason": "自然聊天"}'
+            ),
+            "对，轮到你了。",
+        ]
+        token = create_game_token(self.user, self.persona, "自不量力")
+        response = self.client.post(
+            "/api/games/idiom/respond/",
+            {
+                "persona_id": self.persona.id,
+                "game_token": token,
+                "chain": [{"word": "自不量力", "player": "ai"}],
+                "history": [],
+                "action": "smart",
+                "message": "轮到我了",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["routed_action"], "chat")
+        self.assertEqual(response.data["reply"], "对，轮到你了。")
+        self.assertNotIn("accepted", response.data)
+        self.assertIn(
+            "严格的中文四字输入分类器",
+            generate.call_args_list[0].args[0],
+        )
+
+    @patch(
+        "apps.games.idiom_services.LLMClient.generate",
+        return_value="这句和当前的音对不上，不过我听到了。",
+    )
+    def test_known_idiom_with_unrelated_sound_is_routed_to_chat(self, generate):
+        token = create_game_token(self.user, self.persona, "自不量力")
+        response = self.client.post(
+            "/api/games/idiom/respond/",
+            {
+                "persona_id": self.persona.id,
+                "game_token": token,
+                "chain": [{"word": "自不量力", "player": "ai"}],
+                "history": [],
+                "action": "smart",
+                "message": "海阔天空",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["routed_action"], "chat")
+        self.assertEqual(generate.call_count, 1)
+
+    @patch(
+        "apps.games.idiom_services.LLMClient.generate",
+        return_value="“离”和“力”的声调不一样，这次不算。",
+    )
+    def test_similar_sound_idiom_is_routed_to_validation(self, _generate):
+        token = create_game_token(self.user, self.persona, "自不量力")
+        response = self.client.post(
+            "/api/games/idiom/respond/",
+            {
+                "persona_id": self.persona.id,
+                "game_token": token,
+                "chain": [{"word": "自不量力", "player": "ai"}],
+                "history": [],
+                "action": "smart",
+                "message": "离经叛道",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.data["accepted"])
+        self.assertNotIn("routed_action", response.data)
+        self.assertIn("不是同音同调", response.data["error"])
 
     @patch(
         "apps.games.idiom_services.LLMClient.generate",

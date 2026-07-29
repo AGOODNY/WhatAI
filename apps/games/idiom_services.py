@@ -141,6 +141,101 @@ def _extract_json_object(text):
     return data if isinstance(data, dict) else None
 
 
+def _fuzzy_pinyin_signature(value):
+    base = re.sub(r"[1-5]$", "", str(value or "").lower())
+    for source, target in (("zh", "z"), ("ch", "c"), ("sh", "s")):
+        if base.startswith(source):
+            base = target + base[len(source):]
+            break
+    for source, target in (("ang", "an"), ("eng", "en"), ("ing", "in")):
+        if base.endswith(source):
+            base = base[:-len(source)] + target
+            break
+    return base
+
+
+def pinyin_is_similar(expected, actual):
+    if not _valid_numbered_pinyin(expected) or not _valid_numbered_pinyin(actual):
+        return False
+    return _fuzzy_pinyin_signature(expected) == _fuzzy_pinyin_signature(actual)
+
+
+def classify_smart_four_character(*, word, chain, catalog, user):
+    """Route an ambiguous four-character Enter submission to chat or game."""
+    word = normalize_idiom(word)
+    if not re.fullmatch(r"[\u3400-\u9fff]{4}", word):
+        return {"route": "chat"}
+
+    previous = chain[-1]["word"]
+    expected = catalog[previous]["last"]
+    if word in catalog:
+        return {
+            "route": (
+                "submit"
+                if pinyin_is_similar(expected, catalog[word]["first"])
+                else "chat"
+            ),
+            "metadata": catalog[word],
+            "checked_by_llm": False,
+        }
+
+    prompt = f"""
+你是一个严格的中文四字输入分类器，不进行聊天。
+
+当前成语接龙上一词：{previous}
+接龙要求的首字读音（数字标调拼音）：{expected}
+用户输入：{word}
+
+请判断这四个字：
+1. 是否像用户在尝试说一个成语；
+2. 是否确实是规范、固定、通行的四字成语；
+3. 如果像成语，首字和末字在这个表达中的实际读音。
+
+“轮到我了”“该你说了”“我不知道”“你在干嘛”这类自然聊天句必须判定 looks_like_idiom=false。
+普通聊天、临时短句、口语陈述即使恰好四个字，也不能因为字数而当作成语。
+如果像是在尝试成语但成语本身有误，可令 looks_like_idiom=true、valid_idiom=false，
+并仍给出首字最合理的实际读音，以便系统判断是否属于接龙误答。
+
+只输出 JSON：
+{{"looks_like_idiom": false, "valid_idiom": false, "first": "", "last": "", "reason": "自然聊天"}}
+或
+{{"looks_like_idiom": true, "valid_idiom": true, "first": "小写拼音+声调数字", "last": "小写拼音+声调数字", "reason": ""}}
+或
+{{"looks_like_idiom": true, "valid_idiom": false, "first": "小写拼音+声调数字", "last": "", "reason": "简短原因"}}
+
+ü 使用 v，例如 lv4。不要输出 Markdown 或其他内容。
+""".strip()
+    reply = LLMClient().generate(
+        prompt,
+        max_tokens=130,
+        temperature=0.0,
+        model=get_user_llm_model(user),
+    )
+    decision = _extract_json_object(reply)
+    if not decision:
+        return {"route": "chat"}
+
+    looks_like_idiom = decision.get("looks_like_idiom") is True
+    valid_idiom = decision.get("valid_idiom") is True
+    first = _normalize_numbered_pinyin(decision.get("first"))
+    last = _normalize_numbered_pinyin(decision.get("last"))
+    if not looks_like_idiom or not first or not pinyin_is_similar(expected, first):
+        return {"route": "chat"}
+
+    reason = str(decision.get("reason") or "").strip()[:80]
+    metadata = (
+        {"word": word, "first": first, "last": last}
+        if valid_idiom and last
+        else None
+    )
+    return {
+        "route": "submit",
+        "metadata": metadata,
+        "reason": reason or "这个说法不像规范的四字成语。",
+        "checked_by_llm": True,
+    }
+
+
 def judge_unknown_idiom(*, word, chain, catalog, user):
     """Ask the LLM only when the deterministic dictionary has no entry."""
     previous = chain[-1]["word"]
@@ -558,6 +653,29 @@ def respond_to_idiom_game(
     catalog = _catalog_from_payload(payload)
     chain = validate_chain(raw_chain, payload["opening"], catalog)
 
+    smart_classification = None
+    if action == "smart":
+        smart_classification = classify_smart_four_character(
+            word=message,
+            chain=chain,
+            catalog=catalog,
+            user=user,
+        )
+        if smart_classification["route"] == "chat":
+            event = "anti_cheat" if is_cheat_request(message) else "chat"
+            return {
+                "routed_action": "chat",
+                "reply": generate_idiom_reply(
+                    persona=persona,
+                    user=user,
+                    chain=chain,
+                    history=history,
+                    message=message,
+                    event=event,
+                ),
+            }
+        action = "submit"
+
     if action == "chat":
         event = "anti_cheat" if is_cheat_request(message) else "chat"
         return {
@@ -614,6 +732,22 @@ def respond_to_idiom_game(
         accepted, reason = False, "这个成语已经用过了，不能重复。"
     elif user_word in catalog:
         accepted, reason = validate_submission(user_word, chain, catalog)
+    elif smart_classification and smart_classification.get("checked_by_llm"):
+        reset_timer = True
+        metadata = smart_classification.get("metadata")
+        reason = smart_classification.get("reason", "")
+        accepted = metadata is not None
+        if metadata:
+            catalog[user_word] = metadata
+            payload.setdefault("extras", {})[user_word] = [
+                metadata["first"],
+                metadata["last"],
+            ]
+            accepted, reason = validate_submission(
+                user_word,
+                chain,
+                catalog,
+            )
     else:
         reset_timer = True
         metadata, reason = judge_unknown_idiom(
