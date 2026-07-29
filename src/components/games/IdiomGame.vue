@@ -151,7 +151,7 @@
                         class="idiom-button"
                         type="button"
                         :disabled="inputDisabled || !chatText.trim()"
-                        @click="submitIdiom"
+                        @click="submitIdiom()"
                     >
                         接龙
                     </button>
@@ -404,13 +404,13 @@ function smartSend() {
     const content = chatText.value.trim()
     if (!content) return
     if (turn.value === "user" && !winner.value && /^[\u3400-\u9fff]{4}$/.test(content)) {
-        submitIdiom()
+        submitIdiom({ smart: true })
     } else {
         sendChat()
     }
 }
 
-async function submitIdiom() {
+async function submitIdiom({ smart = false } = {}) {
     const content = chatText.value.trim()
     if (
         !content
@@ -437,12 +437,19 @@ async function submitIdiom() {
                 game_token: gameToken.value,
                 chain: serializableChain(),
                 history: serializableHistory(),
-                action: "submit",
+                action: smart ? "smart" : "submit",
                 message: content,
             },
             { signal: gameAbortController.signal },
         )
         if (version !== matchVersion) return
+
+        if (response.data.routed_action === "chat") {
+            gamePending.value = false
+            addMessage("ai", response.data.reply || "嗯，我听着。")
+            resumeUserTurn(userDeadline)
+            return
+        }
 
         if (!response.data.accepted) {
             gamePending.value = false
