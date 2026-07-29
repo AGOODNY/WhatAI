@@ -229,13 +229,13 @@ def _build_idioms():
 
 IDIOMS = _build_idioms()
 
-OPENING_IDIOMS = (
-    "一心一意",
-    "心想事成",
-    "海阔天空",
-    "高山流水",
-    "妙语连珠",
-    "锦上添花",
-    "风和日丽",
-    "胸有成竹",
+MIN_OPENING_BRANCHES = 2
+OPENING_IDIOMS = tuple(
+    word
+    for word, item in IDIOMS.items()
+    if sum(
+        candidate["word"] != word
+        and candidate["first"] == item["last"]
+        for candidate in IDIOMS.values()
+    ) >= MIN_OPENING_BRANCHES
 )

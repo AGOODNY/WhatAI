@@ -6,7 +6,7 @@ from rest_framework.test import APITestCase
 
 from apps.personas.models import Persona
 
-from .idiom_data import IDIOMS
+from .idiom_data import IDIOMS, MIN_OPENING_BRANCHES, OPENING_IDIOMS
 from .idiom_services import (
     choose_round_commentary_focus,
     completed_exchanges,
@@ -56,6 +56,19 @@ class GomokuServiceTests(SimpleTestCase):
 
 
 class IdiomServiceTests(SimpleTestCase):
+    def test_opening_pool_has_at_least_fifty_words_with_multiple_answers(self):
+        self.assertGreaterEqual(len(OPENING_IDIOMS), 50)
+        for word in OPENING_IDIOMS:
+            followups = [
+                candidate["word"]
+                for candidate in IDIOMS.values()
+                if (
+                    candidate["word"] != word
+                    and candidate["first"] == IDIOMS[word]["last"]
+                )
+            ]
+            self.assertGreaterEqual(len(followups), MIN_OPENING_BRANCHES)
+
     def test_same_syllable_requires_same_tone(self):
         self.assertTrue(same_syllable_and_tone("li4", "li4"))
         self.assertFalse(same_syllable_and_tone("li4", "li2"))
